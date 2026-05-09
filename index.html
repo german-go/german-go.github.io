@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Germán López Anaya | Data Analytics Portfolio</title>
+    <meta name="description" content="Data Analytics portfolio — SQL, Python, Tableau, Power BI. 10+ years in Supply Chain & Retail Operations.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ===== RESET & BASE ===== */
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #1a1a2e;
+            --bg-card-hover: #1f1f35;
+            --accent: #4fc3f7;
+            --accent-glow: rgba(79, 195, 247, 0.15);
+            --accent-secondary: #81d4fa;
+            --text-primary: #e8e8f0;
+            --text-secondary: #9a9ab0;
+            --text-muted: #6a6a80;
+            --border: #2a2a40;
+            --gradient-1: linear-gradient(135deg, #4fc3f7 0%, #29b6f6 50%, #0288d1 100%);
+            --gradient-2: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+
+        a { color: var(--accent); text-decoration: none; transition: color 0.3s; }
+        a:hover { color: var(--accent-secondary); }
+
+        /* ===== NAVIGATION ===== */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 100;
+            background: rgba(10, 10, 15, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 0.9rem 2rem;
+        }
+
+        .nav-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-logo {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            letter-spacing: -0.02em;
+        }
+
+        .nav-logo span { color: var(--accent); }
+
+        .nav-links { display: flex; gap: 2rem; list-style: none; }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            font-size: 0.88rem;
+            font-weight: 500;
+            transition: color 0.3s;
+            letter-spacing: 0.01em;
+        }
+
+        .nav-links a:hover { color: var(--accent); }
+
+        /* ===== HERO ===== */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6rem 2rem 4rem;
+            position: relative;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 50%, var(--accent-glow) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 80%, rgba(2, 136, 209, 0.08) 0%, transparent 40%);
+            pointer-events: none;
+        }
+
+        .hero-content {
+            max-width: 720px;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-badge {
+            display: inline-block;
+            padding: 0.4rem 1rem;
+            background: var(--accent-glow);
+            border: 1px solid rgba(79, 195, 247, 0.25);
+            border-radius: 50px;
+            font-size: 0.82rem;
+            color: var(--accent);
+            font-weight: 500;
+            margin-bottom: 1.5rem;
+            letter-spacing: 0.03em;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.2rem, 5vw, 3.5rem);
+            font-weight: 700;
+            line-height: 1.15;
+            margin-bottom: 1rem;
+            letter-spacing: -0.03em;
+        }
+
+        .hero h1 .accent { color: var(--accent); }
+
+        .hero-subtitle {
+            font-size: 1.15rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 2rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.75rem 1.8rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--gradient-1);
+            color: #000;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(79, 195, 247, 0.3);
+            color: #000;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        /* ===== SECTIONS ===== */
+        section {
+            padding: 5rem 2rem;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .section-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-bottom: 0.5rem;
+        }
+
+        .section-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            letter-spacing: -0.02em;
+        }
+
+        .section-description {
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin-bottom: 3rem;
+            font-size: 1rem;
+        }
+
+        /* ===== ABOUT ===== */
+        .about-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: start;
+        }
+
+        .about-text p {
+            color: var(--text-secondary);
+            margin-bottom: 1.2rem;
+            font-size: 0.95rem;
+        }
+
+        .about-text strong { color: var(--text-primary); font-weight: 600; }
+
+        .about-highlight {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .about-highlight p {
+            color: var(--text-primary) !important;
+            font-style: italic;
+            font-size: 0.95rem !important;
+            margin-bottom: 0 !important;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: border-color 0.3s, transform 0.3s;
+        }
+
+        .stat-card:hover {
+            border-color: rgba(79, 195, 247, 0.3);
+            transform: translateY(-3px);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent);
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            margin-top: 0.3rem;
+        }
+
+        /* ===== SKILLS ===== */
+        .skills-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .skill-category {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.8rem;
+            transition: border-color 0.3s, transform 0.3s;
+        }
+
+        .skill-category:hover {
+            border-color: rgba(79, 195, 247, 0.3);
+            transform: translateY(-3px);
+        }
+
+        .skill-category h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .skill-category h3 .icon {
+            font-size: 1.2rem;
+        }
+
+        .skill-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .skill-tag {
+            padding: 0.35rem 0.8rem;
+            background: rgba(79, 195, 247, 0.08);
+            border: 1px solid rgba(79, 195, 247, 0.15);
+            border-radius: 6px;
+            font-size: 0.82rem;
+            color: var(--accent-secondary);
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 400;
+        }
+
+        /* ===== PROJECTS ===== */
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .project-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .project-card:hover {
+            border-color: rgba(79, 195, 247, 0.3);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .project-status {
+            display: inline-block;
+            padding: 0.25rem 0.7rem;
+            border-radius: 50px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+        }
+
+        .status-coming {
+            background: rgba(255, 193, 7, 0.12);
+            color: #ffc107;
+            border: 1px solid rgba(255, 193, 7, 0.25);
+        }
+
+        .project-card h3 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-bottom: 0.6rem;
+        }
+
+        .project-card p {
+            color: var(--text-secondary);
+            font-size: 0.88rem;
+            margin-bottom: 1.2rem;
+        }
+
+        .project-tech {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+
+        .project-tech span {
+            padding: 0.2rem 0.6rem;
+            background: var(--bg-primary);
+            border-radius: 4px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* ===== EXPERIENCE TIMELINE ===== */
+        .timeline {
+            position: relative;
+            padding-left: 2rem;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0.5rem;
+            bottom: 0.5rem;
+            width: 2px;
+            background: var(--border);
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 2.5rem;
+            padding-left: 1.5rem;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -2.35rem;
+            top: 0.5rem;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: 2px solid var(--bg-primary);
+        }
+
+        .timeline-date {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            color: var(--accent);
+            margin-bottom: 0.3rem;
+        }
+
+        .timeline-item h3 {
+            font-size: 1.05rem;
+            font-weight: 600;
+            margin-bottom: 0.15rem;
+        }
+
+        .timeline-company {
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .timeline-item p {
+            font-size: 0.88rem;
+            color: var(--text-muted);
+        }
+
+        /* ===== CONTACT ===== */
+        .contact-section {
+            text-align: center;
+            padding: 5rem 2rem;
+        }
+
+        .contact-links {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .contact-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem 2.5rem;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .contact-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-3px);
+            color: var(--text-primary);
+        }
+
+        .contact-card .icon { font-size: 1.3rem; }
+        .contact-card .label { font-weight: 500; font-size: 0.95rem; }
+
+        /* ===== FOOTER ===== */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.82rem;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .about-grid { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .hero h1 { font-size: 2rem; }
+            section { padding: 3rem 1.5rem; }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid { grid-template-columns: 1fr; }
+            .hero-cta { flex-direction: column; align-items: center; }
+        }
+
+        /* ===== HAMBURGER MENU (mobile) ===== */
+        .nav-toggle { display: none; background: none; border: none; cursor: pointer; padding: 0.5rem; }
+        .nav-toggle span { display: block; width: 22px; height: 2px; background: var(--text-primary); margin: 5px 0; transition: 0.3s; }
+
+        @media (max-width: 768px) {
+            .nav-toggle { display: block; }
+            .nav-links {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: var(--bg-secondary);
+                flex-direction: column;
+                padding: 1.5rem 2rem;
+                gap: 1rem;
+                border-bottom: 1px solid var(--border);
+            }
+            .nav-links.active { display: flex; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== NAVIGATION ===== -->
+<nav>
+    <div class="nav-container">
+        <div class="nav-logo">&lt;<span>GL</span>/&gt;</div>
+        <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('active')">
+            <span></span><span></span><span></span>
+        </button>
+        <ul class="nav-links">
+            <li><a href="#about">About</a></li>
+            <li><a href="#skills">Skills</a></li>
+            <li><a href="#projects">Projects</a></li>
+            <li><a href="#experience">Experience</a></li>
+            <li><a href="#contact">Contact</a></li>
+        </ul>
+    </div>
+</nav>
+
+<!-- ===== HERO ===== -->
+<section class="hero">
+    <div class="hero-content">
+        <div class="hero-badge">Open to Data Analyst Opportunities</div>
+        <h1>Hi, I'm <span class="accent">Germán López Anaya</span></h1>
+        <p class="hero-subtitle">
+            Operations leader with 10+ years in supply chain & retail, now leveraging data analytics to turn complex business problems into actionable insights.
+        </p>
+        <div class="hero-cta">
+            <a href="#projects" class="btn btn-primary">View Projects</a>
+            <a href="#contact" class="btn btn-outline">Get in Touch</a>
+        </div>
+    </div>
+</section>
+
+<!-- ===== ABOUT ===== -->
+<section id="about">
+    <div class="section-label">// about me</div>
+    <h2 class="section-title">From Operations to Analytics</h2>
+    <div class="about-grid">
+        <div class="about-text">
+            <p>
+                With <strong>10+ years leading logistics and supply chain operations</strong> in premium retail, international logistics, and national distribution, I bring a unique perspective to data analytics.
+            </p>
+            <p>
+                As <strong>Co-Founder of Mobik Retail</strong>, I built a luxury retail operation from scratch — managing the complete supply chain from international sourcing to point of sale. This hands-on experience means I understand the real-world problems that data needs to solve.
+            </p>
+            <p>
+                Currently expanding my technical toolkit through <strong>TripleTen's Data Analytics program</strong>, combining operational expertise with SQL, Python, Tableau, and statistical analysis.
+            </p>
+            <div class="about-highlight">
+                <p>"I'm not an analyst learning the business — I'm an operations leader who now translates real-world problems into actionable analysis."</p>
+            </div>
+        </div>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-number">10+</span>
+                <span class="stat-label">Years in Operations</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number">6</span>
+                <span class="stat-label">Companies</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number">5+</span>
+                <span class="stat-label">Analytics Tools</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number">3</span>
+                <span class="stat-label">Countries Worked</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SKILLS ===== -->
+<section id="skills">
+    <div class="section-label">// technical skills</div>
+    <h2 class="section-title">Tools & Technologies</h2>
+    <p class="section-description">Combining deep operational knowledge with a growing data analytics toolkit.</p>
+    <div class="skills-grid">
+        <div class="skill-category">
+            <h3><span class="icon">📊</span> Data Analysis</h3>
+            <div class="skill-tags">
+                <span class="skill-tag">Python</span>
+                <span class="skill-tag">Pandas</span>
+                <span class="skill-tag">NumPy</span>
+                <span class="skill-tag">Jupyter</span>
+                <span class="skill-tag">Statistics</span>
+            </div>
+        </div>
+        <div class="skill-category">
+            <h3><span class="icon">🗄️</span> Databases & SQL</h3>
+            <div class="skill-tags">
+                <span class="skill-tag">SQL</span>
+                <span class="skill-tag">PostgreSQL</span>
+                <span class="skill-tag">Data Modeling</span>
+                <span class="skill-tag">ETL</span>
+            </div>
+        </div>
+        <div class="skill-category">
+            <h3><span class="icon">📈</span> Visualization</h3>
+            <div class="skill-tags">
+                <span class="skill-tag">Tableau</span>
+                <span class="skill-tag">Power BI</span>
+                <span class="skill-tag">Matplotlib</span>
+                <span class="skill-tag">Seaborn</span>
+                <span class="skill-tag">Excel</span>
+            </div>
+        </div>
+        <div class="skill-category">
+            <h3><span class="icon">🚛</span> Domain Expertise</h3>
+            <div class="skill-tags">
+                <span class="skill-tag">Supply Chain</span>
+                <span class="skill-tag">Logistics</span>
+                <span class="skill-tag">Retail Ops</span>
+                <span class="skill-tag">KPI Design</span>
+                <span class="skill-tag">Import/Export</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== PROJECTS ===== -->
+<section id="projects">
+    <div class="section-label">// portfolio</div>
+    <h2 class="section-title">Projects</h2>
+    <p class="section-description">Data analytics projects applying real-world business problems. More coming soon as I progress through my training.</p>
+    <div class="projects-grid">
+        <div class="project-card">
+            <span class="project-status status-coming">Coming Soon</span>
+            <h3>E-commerce Data Analysis</h3>
+            <p>Exploratory data analysis of an e-commerce dataset — cleaning, transformation, and business insights using Python and Pandas.</p>
+            <div class="project-tech">
+                <span>Python</span>
+                <span>Pandas</span>
+                <span>Matplotlib</span>
+                <span>Jupyter</span>
+            </div>
+        </div>
+        <div class="project-card">
+            <span class="project-status status-coming">Coming Soon</span>
+            <h3>Supply Chain Dashboard</h3>
+            <p>Interactive dashboard analyzing supply chain KPIs — delivery times, inventory turnover, and vendor performance metrics.</p>
+            <div class="project-tech">
+                <span>Tableau</span>
+                <span>SQL</span>
+                <span>Excel</span>
+            </div>
+        </div>
+        <div class="project-card">
+            <span class="project-status status-coming">Coming Soon</span>
+            <h3>Statistical Hypothesis Testing</h3>
+            <p>A/B testing and statistical analysis project applying hypothesis testing to real business scenarios.</p>
+            <div class="project-tech">
+                <span>Python</span>
+                <span>SciPy</span>
+                <span>Statistics</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== EXPERIENCE ===== -->
+<section id="experience">
+    <div class="section-label">// career path</div>
+    <h2 class="section-title">Professional Experience</h2>
+    <p class="section-description">A progressive career in operations and logistics, now transitioning to data analytics.</p>
+    <div class="timeline">
+        <div class="timeline-item">
+            <div class="timeline-date">2020 — Present</div>
+            <h3>Co-Founder</h3>
+            <div class="timeline-company">Mobik Retail</div>
+            <p>Built and scaled a premium retail operation from zero. Managed end-to-end supply chain for luxury brands including import logistics, inventory management, and multi-location distribution.</p>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-date">2019 — 2020</div>
+            <h3>Logistics Specialist</h3>
+            <div class="timeline-company">EYELEVEL, An InnerWorkings Company</div>
+            <p>Managed logistics execution for marketing campaigns of global brands, coordinating production, warehousing, and distribution.</p>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-date">2017 — 2019</div>
+            <h3>Logistics Executive</h3>
+            <div class="timeline-company">EYELEVEL, An InnerWorkings Company</div>
+            <p>Coordinated international logistics operations for brand marketing activations across Mexico.</p>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-date">2016 — 2017</div>
+            <h3>National Traffic Planner</h3>
+            <div class="timeline-company">AMECO</div>
+            <p>Planned and optimized national distribution routes and transportation logistics.</p>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-date">2014 — 2016</div>
+            <h3>Distribution Monitoring Coordinator</h3>
+            <div class="timeline-company">SILODISA</div>
+            <p>Coordinated monitoring and distribution operations for national logistics network.</p>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-date">2013 — 2014</div>
+            <h3>Operations & Loss Prevention</h3>
+            <div class="timeline-company">TUM Logistics</div>
+            <p>Operations programming and loss prevention for distribution operations.</p>
+        </div>
+    </div>
+</section>
+
+<!-- ===== CONTACT ===== -->
+<section id="contact" class="contact-section">
+    <div class="section-label">// let's connect</div>
+    <h2 class="section-title">Get in Touch</h2>
+    <p class="section-description" style="margin-left:auto;margin-right:auto;">
+        I'm actively looking for Data Analyst opportunities where I can combine my operational expertise with data-driven insights. Let's talk.
+    </p>
+    <div class="contact-links">
+        <a href="mailto:german@cardinalpoint.mx" class="contact-card">
+            <span class="icon">✉️</span>
+            <span class="label">german@cardinalpoint.mx</span>
+        </a>
+        <a href="https://www.linkedin.com/in/germanlopezanaya" class="contact-card" target="_blank" rel="noopener">
+            <span class="icon">💼</span>
+            <span class="label">LinkedIn</span>
+        </a>
+        <a href="https://github.com/german-go" class="contact-card" target="_blank" rel="noopener">
+            <span class="icon">💻</span>
+            <span class="label">GitHub</span>
+        </a>
+    </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer>
+    <p>Built by Germán López Anaya · 2025</p>
+</footer>
+
+</body>
+</html>
