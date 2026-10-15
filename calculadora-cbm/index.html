@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Calculadora CBM Cardinal Point</title>
+<meta name="description" content="Calculadora de CBM, peso volumétrico y acomodo en contenedor con visualización 3D. Cardinal Point.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap">
+<style>
+/* Layout: banda de marca oscura -> carga (tabla) -> resultados -> visor 3D a todo el ancho -> supuestos */
+:root {
+  --slate: #1D3557;
+  --slate-deep: #14263D;
+  --slate-mid: #24405F;
+  --steel: #457B9D;
+  --aqua: #A8DADC;
+  --coral: #EB6366;
+
+  --bg: #F0EFEB;
+  --surface: #FFFFFF;
+  --surface-2: #F6F5F2;
+  --ink: #1D3557;
+  --ink-body: #273951;
+  --muted: #6E7F96;
+  --line: #E4E2DB;
+  --line-strong: #D6D3CA;
+  --field: #FFFFFF;
+  --focus: #457B9D;
+  --ok: #2F7D5B;
+  --warn: #B26B00;
+  --bad: #B3383B;
+  --scene: #E7E5DF;
+  --scene-grid: #CFCBC0;
+  --scene-edge: #1D3557;
+
+  --font-sans: 'DM Sans', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1B2B; --surface: #14263D; --surface-2: #1A2F4A; --ink: #F0EFEB; --ink-body: #D9DEE6;
+    --muted: #8FA3BC; --line: #24405F; --line-strong: #2E4E73; --field: #0F1F33; --focus: #A8DADC;
+    --ok: #6FC79E; --warn: #E8B05A; --bad: #F08A8C; --scene: #0C1726; --scene-grid: #23405F; --scene-edge: #A8DADC;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1B2B; --surface: #14263D; --surface-2: #1A2F4A; --ink: #F0EFEB; --ink-body: #D9DEE6;
+  --muted: #8FA3BC; --line: #24405F; --line-strong: #2E4E73; --field: #0F1F33; --focus: #A8DADC;
+  --ok: #6FC79E; --warn: #E8B05A; --bad: #F08A8C; --scene: #0C1726; --scene-grid: #23405F; --scene-edge: #A8DADC;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink-body); font-family: var(--font-sans); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* Banda de marca */
+.brand { background: linear-gradient(135deg, var(--slate-deep) 0%, var(--slate) 60%, var(--slate-mid) 100%); color: #F0EFEB; }
+.brand .wrap { padding-block: 22px 26px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 18px 32px; }
+.brand svg { width: 250px; max-width: 100%; height: auto; }
+.brand-title { display: grid; gap: 4px; min-width: 0; }
+.eyebrow { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--aqua); }
+.brand h1 { margin: 0; font-size: clamp(26px, 4vw, 36px); font-weight: 500; letter-spacing: -.01em; color: #FFFFFF; text-wrap: balance; }
+.brand p { margin: 0; color: #B9C8DA; max-width: 60ch; font-size: 14.5px; }
+
+main.wrap { padding-block: 26px 48px; display: grid; gap: 22px; }
+section.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; margin-bottom: 14px; }
+h2 { margin: 0; font-size: 18px; font-weight: 600; color: var(--ink); text-wrap: balance; }
+.hint { color: var(--muted); font-size: 13px; }
+
+/* Controles */
+.controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: flex-end; margin-bottom: 16px; }
+.ctl { display: grid; gap: 5px; }
+.ctl > span, .lbl { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 7px; overflow: hidden; background: var(--field); }
+.seg button { font: inherit; font-size: 13.5px; border: 0; background: transparent; color: var(--ink-body); padding: 7px 12px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line-strong); }
+.seg button[aria-pressed="true"] { background: var(--slate); color: #FFFFFF; }
+:root[data-theme="dark"] .seg button[aria-pressed="true"] { background: var(--aqua); color: var(--slate-deep); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .seg button[aria-pressed="true"] { background: var(--aqua); color: var(--slate-deep); } }
+select, input[type="number"], input[type="text"] {
+  font: inherit; font-size: 14px; color: var(--ink-body); background: var(--field);
+  border: 1px solid var(--line-strong); border-radius: 6px; padding: 7px 9px; min-width: 0;
+}
+input[type="number"] { font-family: var(--font-mono); font-size: 13.5px; text-align: right; font-variant-numeric: tabular-nums; }
+select:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.check { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; padding-block: 7px; }
+.check input { width: 16px; height: 16px; accent-color: var(--steel); }
+.custom-dims { display: none; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+.custom-dims.on { display: flex; }
+.custom-dims input { width: 92px; }
+
+/* Tabla de carga */
+.table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; min-width: 880px; }
+th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+thead th { background: var(--surface-2); font-family: var(--font-mono); font-weight: 400; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+tbody tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; }
+td input[type="number"] { width: 86px; }
+td input.qty { width: 74px; }
+td input[type="text"] { width: 100%; min-width: 150px; }
+.sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: middle; border: 1px solid rgba(0,0,0,.15); }
+.cbm-cell { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink); }
+.row-warn td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
+.del { font: inherit; border: 0; background: transparent; color: var(--muted); cursor: pointer; padding: 4px 8px; border-radius: 5px; font-size: 18px; line-height: 1; }
+.del:hover { color: var(--bad); background: var(--surface-2); }
+.table-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; align-items: center; }
+.btn { font: inherit; font-size: 14px; border-radius: 7px; padding: 8px 14px; cursor: pointer; border: 1px solid var(--line-strong); background: var(--field); color: var(--ink); }
+.btn:hover { border-color: var(--steel); }
+.btn.primary { background: var(--slate); border-color: var(--slate); color: #FFFFFF; }
+.btn.primary:hover { background: var(--slate-mid); }
+.sample-tag { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--warn); border: 1px solid currentColor; border-radius: 99px; padding: 2px 9px; }
+.msg { margin-top: 10px; font-size: 13.5px; color: var(--bad); }
+.msg:empty { display: none; }
+
+/* KPIs */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.kpi { background: var(--surface); padding: 16px 18px; display: grid; gap: 4px; align-content: start; min-width: 0; }
+.kpi .v { font-family: var(--font-mono); font-size: 26px; line-height: 1.15; color: var(--ink); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.kpi .v small { font-size: 14px; color: var(--muted); margin-left: 4px; }
+.kpi .v.accent { color: var(--coral); }
+.kpi .s { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.meter { height: 6px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; margin-top: 6px; }
+.meter i { display: block; height: 100%; background: var(--steel); border-radius: 99px; transition: width .3s; }
+.meter i.hi { background: var(--warn); }
+.meter i.over { background: var(--bad); }
+
+/* Visor 3D */
+.viewer-panel { padding: 0; overflow: hidden; }
+.viewer-head { padding: 18px 20px 12px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px 20px; }
+.viewer { position: relative; height: min(68vh, 600px); min-height: 360px; background: var(--scene); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.viewer canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.viewer canvas:active { cursor: grabbing; }
+.overlay { position: absolute; left: 12px; top: 12px; display: grid; gap: 6px; pointer-events: none; }
+.chip { pointer-events: auto; background: color-mix(in srgb, var(--surface) 88%, transparent); border: 1px solid var(--line); border-radius: 7px; padding: 6px 10px; font-size: 12.5px; color: var(--ink-body); backdrop-filter: blur(6px); }
+.chip b { font-family: var(--font-mono); font-weight: 500; color: var(--ink); }
+.pager { display: inline-flex; align-items: center; gap: 8px; }
+.pager .btn { padding: 6px 11px; }
+.pager span { font-family: var(--font-mono); font-size: 13px; color: var(--ink); min-width: 9ch; text-align: center; }
+.viewer-foot { padding: 14px 20px 18px; display: grid; gap: 14px; }
+.seq { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.seq input[type="range"] { flex: 1 1 260px; accent-color: var(--steel); min-width: 0; }
+.seq output { font-family: var(--font-mono); font-size: 13px; color: var(--ink); min-width: 15ch; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.nofit { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--muted); font-size: 14px; }
+.webgl-off { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
+
+/* Supuestos */
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px 28px; font-size: 13.5px; }
+.notes h3 { margin: 0 0 6px; font-size: 14px; font-weight: 600; color: var(--ink); }
+.notes p, .notes ul { margin: 0; color: var(--ink-body); max-width: 65ch; }
+.notes ul { padding-left: 18px; display: grid; gap: 4px; }
+.notes code { font-family: var(--font-mono); font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+.ref-table { width: 100%; min-width: 0; font-size: 13px; }
+.ref-table th, .ref-table td { padding: 5px 6px; }
+  .ref-table td.num { white-space: nowrap; }
+.ref-table td { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+footer.wrap { padding-block: 0 32px; color: var(--muted); font-size: 12.5px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+
+@media (max-width: 560px) {
+  .kpi .v { font-size: 22px; }
+  .brand svg { width: 200px; }
+}
+@media (prefers-reduced-motion: reduce) { .meter i { transition: none; } }
+</style>
+</head>
+<body>
+
+<header class="brand">
+  <div class="wrap">
+    <div class="brand-title">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 140" role="img" aria-label="Cardinal Point">
+        <g transform="translate(70, 70) scale(0.85)">
+          <polygon points="0,-56 -14,-14 0,-20 14,-14" fill="#FFFFFF"></polygon>
+          <polygon points="0,56 -14,14 0,20 14,14" fill="#FFFFFF" fill-opacity="0.35"></polygon>
+          <polygon points="-56,0 -14,-14 -20,0 -14,14" fill="#FFFFFF" fill-opacity="0.35"></polygon>
+          <polygon points="56,0 14,-14 20,0 14,14" fill="#EB6366"></polygon>
+          <circle cx="0" cy="0" r="4.5" fill="#FFFFFF"></circle>
+          <circle cx="0" cy="0" r="11" fill="none" stroke="#FFFFFF" stroke-width="0.5" stroke-opacity="0.2"></circle>
+        </g>
+        <text x="150" y="84" font-family="DM Sans, Inter, Helvetica, Arial, sans-serif" font-size="38" font-weight="500" letter-spacing="5" fill="#FFFFFF">CARDINAL POINT</text>
+        <circle cx="540" cy="78" r="6" fill="#EB6366"></circle>
+      </svg>
+    </div>
+    <div class="brand-title">
+      <span class="eyebrow">Herramienta de cubicaje</span>
+      <h1>Calculadora CBM</h1>
+      <p>Volumen, peso tasable y acomodo estimado en contenedor, con vista 3D que puedes girar, acercar y recorrer.</p>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="panel" aria-labelledby="h-carga">
+    <div class="panel-head">
+      <h2 id="h-carga">Carga</h2>
+      <span class="sample-tag" id="sampleTag">Datos de ejemplo</span>
+    </div>
+
+    <div class="controls">
+      <div class="ctl">
+        <span id="lbl-units">Unidades</span>
+        <div class="seg" role="group" aria-labelledby="lbl-units">
+          <button type="button" id="u-metric" aria-pressed="true">cm · kg</button>
+          <button type="button" id="u-imperial" aria-pressed="false">in · lb</button>
+        </div>
+      </div>
+      <label class="ctl">
+        <span>Equipo</span>
+        <select id="container">
+          <option value="20GP">20' Dry (20GP)</option>
+          <option value="40GP">40' Dry (40GP)</option>
+          <option value="40HC" selected>40' High Cube (40HC)</option>
+          <option value="CUSTOM">Personalizado (caja seca, ULD, etc.)</option>
+        </select>
+      </label>
+      <label class="ctl">
+        <span>Factor aéreo</span>
+        <select id="airFactor">
+          <option value="6000" selected>1:6000 (IATA, 167 kg/m³)</option>
+          <option value="5000">1:5000 (courier, 200 kg/m³)</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" id="tilt"> Permitir voltear cajas (girar en todos los ejes)</label>
+    </div>
+
+    <div class="custom-dims" id="customDims">
+      <label class="ctl"><span>Largo int. <em class="u-len">cm</em></span><input type="number" id="c-l" min="1" step="any"></label>
+      <label class="ctl"><span>Ancho int. <em class="u-len">cm</em></span><input type="number" id="c-w" min="1" step="any"></label>
+      <label class="ctl"><span>Alto int. <em class="u-len">cm</em></span><input type="number" id="c-h" min="1" step="any"></label>
+      <label class="ctl"><span>Carga útil <em class="u-wt">kg</em></span><input type="number" id="c-p" min="1" step="any"></label>
+    </div>
+
+    <div class="table-scroll" style="margin-top:14px">
+      <table aria-describedby="h-carga">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Descripción</th>
+            <th class="num">Largo <span class="u-len">cm</span></th>
+            <th class="num">Ancho <span class="u-len">cm</span></th>
+            <th class="num">Alto <span class="u-len">cm</span></th>
+            <th class="num">Cantidad</th>
+            <th class="num">Peso c/u <span class="u-wt">kg</span></th>
+            <th>Apilable</th>
+            <th class="num">Volumen línea</th>
+            <th class="num">Peso línea</th>
+            <th><span class="sr-only" style="position:absolute;left:-9999px">Eliminar</span></th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="table-actions">
+      <button type="button" class="btn primary" id="addRow">Agregar línea</button>
+      <button type="button" class="btn" id="clearAll">Vaciar tabla</button>
+      <button type="button" class="btn" id="loadSample">Cargar ejemplo</button>
+      <button type="button" class="btn" id="copySummary">Copiar resumen</button>
+      <span class="hint" id="copyMsg" aria-live="polite"></span>
+    </div>
+    <div class="msg" id="msg" role="status"></div>
+  </section>
+
+  <section aria-labelledby="h-res">
+    <h2 id="h-res" style="margin-bottom:12px">Resultados</h2>
+    <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section class="panel viewer-panel" aria-labelledby="h-3d">
+    <div class="viewer-head">
+      <div>
+        <h2 id="h-3d">Acomodo en contenedor</h2>
+        <span class="hint">Arrastra para girar · rueda o pellizco para acercar · clic derecho o dos dedos para desplazar</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+        <div class="seg" role="group" aria-label="Vista">
+          <button type="button" data-view="iso" aria-pressed="true">3D</button>
+          <button type="button" data-view="side" aria-pressed="false">Lateral</button>
+          <button type="button" data-view="door" aria-pressed="false">Puertas</button>
+          <button type="button" data-view="top" aria-pressed="false">Planta</button>
+        </div>
+        <div class="pager">
+          <button type="button" class="btn" id="prevC" aria-label="Contenedor anterior">‹</button>
+          <span id="pagerLbl">1 / 1</span>
+          <button type="button" class="btn" id="nextC" aria-label="Contenedor siguiente">›</button>
+        </div>
+      </div>
+    </div>
+    <div class="viewer" id="viewer">
+      <div class="overlay" id="overlay"></div>
+    </div>
+    <div class="viewer-foot">
+      <div class="seq">
+        <button type="button" class="btn" id="play">Simular carga</button>
+        <label for="seqRange" class="lbl">Secuencia</label>
+        <input type="range" id="seqRange" min="0" max="0" value="0">
+        <output id="seqOut" for="seqRange"></output>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-sup">
+    <div class="panel-head"><h2 id="h-sup">Supuestos y referencias</h2><span class="hint">Valores de referencia. Validar con naviera, aerolínea o transportista.</span></div>
+    <div class="notes">
+      <div>
+        <h3>Fórmulas</h3>
+        <ul>
+          <li>CBM por caja = <code>L × A × H (cm) ÷ 1,000,000</code>. 1 m³ = 35.3147 ft³.</li>
+          <li>Peso volumétrico aéreo = <code>L × A × H (cm) ÷ factor</code>. Peso tasable = el mayor entre bruto y volumétrico.</li>
+          <li>LCL marítimo (W/M) = el mayor entre m³ y toneladas (<code>kg ÷ 1,000</code>). Es la regla habitual; cada consolidador puede aplicar mínimos y redondeos propios.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Medidas internas de referencia</h3>
+        <div class="table-scroll" style="border:0">
+          <table class="ref-table" style="min-width:0">
+            <thead><tr><th>Equipo</th><th class="num">L × A × H (m)</th><th class="num">m³</th><th class="num">Carga útil</th></tr></thead>
+            <tbody id="refRows"></tbody>
+          </table>
+        </div>
+        <p class="hint" style="margin-top:6px">Varían por fabricante y naviera. La carga útil real además está limitada por el peso máximo permitido en carretera de cada país.</p>
+      </div>
+      <div>
+        <h3>Cómo se calcula el acomodo</h3>
+        <p>Las cajas más grandes se cargan primero, desde la cabecera hacia las puertas. Cada bloque de cajas iguales ocupa el espacio libre más cercano a la cabecera y más bajo; el hueco que deja a un lado y encima se aprovecha con las siguientes cajas. Sobre una caja no apilable no se coloca nada. Es una estimación para cotizar y planear; no considera tarimas, distribución de peso por eje, amarres ni espacio de maniobra. El acomodo real puede requerir más espacio.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap">
+  <span>Cardinal Point · MX · US · CA</span>
+  <span>Cálculo estimado. No sustituye la confirmación de espacio del transportista.</span>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ---------- Datos de referencia (cm, kg) ----------
+  var CONTAINERS = {
+    '20GP': { name: "20' Dry", L: 589.8, W: 235.2, H: 239.3, payload: 28200 },
+    '40GP': { name: "40' Dry", L: 1203.2, W: 235.2, H: 239.3, payload: 26700 },
+    '40HC': { name: "40' High Cube", L: 1203.2, W: 235.2, H: 269.8, payload: 26500 }
+  };
+  var custom = { L: 1580, W: 250, H: 270, payload: 24000 };   // ejemplo editable para caja seca
+  var COLORS = ['#457B9D', '#A8DADC', '#1D3557', '#C9BFA8', '#6B8CAE', '#8496AD', '#2E5A7A', '#D6D3CA', '#5E7F73', '#9DB4C8'];
+  var IN = 2.54, LB = 0.45359237;
+
+  var SAMPLE = [
+    { desc: 'Caja master 60 × 40 × 40', l: 60, w: 40, h: 40, qty: 320, wt: 18, stack: true },
+    { desc: 'Caja grande 120 × 80 × 90', l: 120, w: 80, h: 90, qty: 24, wt: 140, stack: true },
+    { desc: 'Equipo frágil (no apilar)', l: 100, w: 60, h: 70, qty: 10, wt: 85, stack: false }
+  ];
+
+  // ---------- Estado ----------
+  var state = { units: 'metric', container: '40HC', airFactor: 6000, tilt: false, lines: [], view: 0, isSample: true };
+  var nextId = 1;
+  function mkLine(o) { return { id: nextId++, desc: o.desc || '', l: o.l, w: o.w, h: o.h, qty: o.qty, wt: o.wt, stack: o.stack !== false }; }
+  function loadSample() {
+    state.lines = SAMPLE.map(function (s) {
+      var c = state.units === 'metric' ? s : { desc: s.desc, l: r2(s.l / IN), w: r2(s.w / IN), h: r2(s.h / IN), qty: s.qty, wt: r2(s.wt / LB), stack: s.stack };
+      return mkLine(c);
+    });
+    state.isSample = true;
+  }
+
+  // ---------- Utilidades ----------
+  var $ = function (id) { return document.getElementById(id); };
+  function r2(n) { return Math.round(n * 100) / 100; }
+  function fmt(n, d) { return Number(n).toLocaleString('es-MX', { minimumFractionDigits: d, maximumFractionDigits: d }); }
+  function num(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
+  function lenF() { return state.units === 'metric' ? 1 : IN; }   // a cm
+  function wtF() { return state.units === 'metric' ? 1 : LB; }    // a kg
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function getContainer() {
+    if (state.container === 'CUSTOM') return { name: 'Personalizado', L: custom.L, W: custom.W, H: custom.H, payload: custom.payload };
+    return CONTAINERS[state.container];
+  }
+  // Línea en cm/kg
+  function norm(line) {
+    var f = lenF(), g = wtF();
+    return { id: line.id, desc: line.desc, l: num(line.l) * f, w: num(line.w) * f, h: num(line.h) * f, qty: Math.max(0, Math.floor(num(line.qty))), wt: num(line.wt) * g, stack: line.stack };
+  }
+  function validLine(n) { return n.l > 0 && n.w > 0 && n.h > 0 && n.qty > 0; }
+
+  // ---------- Acomodo por espacios libres ----------
+  // Cada caja se coloca en el espacio libre más cercano a la cabecera (x), luego más bajo (y), luego a la izquierda (z).
+  // Se colocan bloques rectangulares completos de cajas iguales y el espacio sobrante se divide en tres:
+  // encima del bloque (solo si es apilable), a un lado y hacia las puertas. Así nada queda flotando.
+  var EPS = 1e-6;
+  function orientations(n, tilt) {
+    var d = [n.l, n.w, n.h];
+    var perms = [[0, 1, 2], [1, 0, 2]];
+    if (tilt) perms.push([0, 2, 1], [2, 0, 1], [1, 2, 0], [2, 1, 0]);
+    return perms.map(function (p) { return { a: d[p[0]], b: d[p[1]], c: d[p[2]] }; }); // a: largo, b: ancho, c: alto
+  }
+  function blockFor(o, s, n, lim) {
+    var nx = Math.floor(s.l / o.a + EPS), nz = Math.floor(s.w / o.b + EPS);
+    var ny = n.stack ? Math.floor(s.h / o.c + EPS) : (o.c <= s.h + EPS ? 1 : 0);
+    if (nx < 1 || ny < 1 || nz < 1) return null;
+    var cap = nx * ny * nz, k = Math.min(cap, lim), bx, by, bz;
+    if (k >= ny * nz) { bx = Math.min(nx, Math.floor(k / (ny * nz))); by = ny; bz = nz; }
+    else if (k >= nz) { bx = 1; by = Math.floor(k / nz); bz = nz; }
+    else { bx = 1; by = 1; bz = k; }
+    return { o: o, bx: bx, by: by, bz: bz, count: bx * by * bz, BL: bx * o.a };
+  }
+  function spaceOrder(p, q) { return (p.x - q.x) || (p.y - q.y) || (p.z - q.z); }
+  function pack(lines, C, tilt) {
+    var result = { containers: [], unplaced: [], tooHeavy: [] };
+    function newC() {
+      var c = { boxes: [], weight: 0, vol: 0, spaces: [{ x: 0, y: 0, z: 0, l: C.L, h: C.H, w: C.W }] };
+      result.containers.push(c); return c;
+    }
+    newC();
+    var order = lines.map(function (n, i) { n.idx = i; return n; })
+      .filter(validLine)
+      .sort(function (p, q) { return (q.l * q.w * q.h) - (p.l * p.w * p.h) || p.idx - q.idx; });
+    order.forEach(function (n) {
+      var oris = orientations(n, tilt).filter(function (o) { return o.a <= C.L + EPS && o.b <= C.W + EPS && o.c <= C.H + EPS; });
+      if (!oris.length) { result.unplaced.push(n.idx); return; }
+      if (n.wt > C.payload + EPS) { result.tooHeavy.push(n.idx); return; }
+      var rem = n.qty, v = n.l * n.w * n.h, guard = 0;
+      while (rem > 0 && guard++ < 50000) {
+        var pick = null;
+        for (var ci = 0; ci < result.containers.length && !pick; ci++) {
+          var c = result.containers[ci];
+          var maxW = n.wt > 0 ? Math.floor((C.payload - c.weight) / n.wt + EPS) : Infinity;
+          if (maxW < 1) continue;
+          var lim = Math.min(rem, maxW);
+          for (var si = 0; si < c.spaces.length && !pick; si++) {
+            var s = c.spaces[si], best = null;
+            oris.forEach(function (o) {
+              var b = blockFor(o, s, n, lim);
+              if (b && (!best || b.count > best.count || (b.count === best.count && b.BL < best.BL))) best = b;
+            });
+            if (best) pick = { c: c, si: si, s: s, b: best };
+          }
+        }
+        if (!pick) {
+          if (result.containers[result.containers.length - 1].boxes.length === 0) { result.unplaced.push(n.idx); break; }
+          newC(); continue;
+        }
+        var c2 = pick.c, sp = pick.s, B = pick.b, o = B.o;
+        for (var ix = 0; ix < B.bx; ix++) for (var iy = 0; iy < B.by; iy++) for (var iz = 0; iz < B.bz; iz++) {
+          c2.boxes.push({ line: n.idx, x: sp.x + ix * o.a, y: sp.y + iy * o.c, z: sp.z + iz * o.b, dx: o.a, dy: o.c, dz: o.b });
+        }
+        c2.weight += B.count * n.wt; c2.vol += B.count * v; rem -= B.count;
+        var BL = B.bx * o.a, BH = B.by * o.c, BW = B.bz * o.b;
+        c2.spaces.splice(pick.si, 1);
+        var add = [];
+        if (n.stack) add.push({ x: sp.x, y: sp.y + BH, z: sp.z, l: BL, h: sp.h - BH, w: BW });
+        add.push({ x: sp.x, y: sp.y, z: sp.z + BW, l: BL, h: sp.h, w: sp.w - BW });
+        add.push({ x: sp.x + BL, y: sp.y, z: sp.z, l: sp.l - BL, h: sp.h, w: sp.w });
+        add.forEach(function (q) { if (q.l > 1 && q.h > 1 && q.w > 1) c2.spaces.push(q); });
+        c2.spaces.sort(spaceOrder);
+      }
+    });
+    result.containers.forEach(function (c) {
+      // Orden de carga para la simulación: de la cabecera a las puertas, de abajo hacia arriba
+      c.boxes.sort(function (p, q) { return (p.x - q.x) || (p.y - q.y) || (p.z - q.z); });
+      delete c.spaces;
+    });
+    return result;
+  }
+
+  // ---------- Tabla ----------
+  var rowsEl = $('rows');
+  function renderRows() {
+    var lu = state.units === 'metric' ? 'cm' : 'in', wu = state.units === 'metric' ? 'kg' : 'lb';
+    document.querySelectorAll('.u-len').forEach(function (e) { e.textContent = lu; });
+    document.querySelectorAll('.u-wt').forEach(function (e) { e.textContent = wu; });
+    rowsEl.innerHTML = state.lines.map(function (ln, i) {
+      return '<tr data-id="' + ln.id + '">' +
+        '<td><span class="sw" style="background:' + COLORS[i % COLORS.length] + '"></span></td>' +
+        '<td><input type="text" id="d-' + ln.id + '" data-f="desc" value="' + esc(ln.desc) + '" placeholder="Línea ' + (i + 1) + '" aria-label="Descripción línea ' + (i + 1) + '"></td>' +
+        '<td class="num"><input type="number" id="l-' + ln.id + '" data-f="l" min="0" step="any" value="' + ln.l + '" aria-label="Largo"></td>' +
+        '<td class="num"><input type="number" id="w-' + ln.id + '" data-f="w" min="0" step="any" value="' + ln.w + '" aria-label="Ancho"></td>' +
+        '<td class="num"><input type="number" id="h-' + ln.id + '" data-f="h" min="0" step="any" value="' + ln.h + '" aria-label="Alto"></td>' +
+        '<td class="num"><input type="number" class="qty" id="q-' + ln.id + '" data-f="qty" min="0" step="1" value="' + ln.qty + '" aria-label="Cantidad"></td>' +
+        '<td class="num"><input type="number" id="p-' + ln.id + '" data-f="wt" min="0" step="any" value="' + ln.wt + '" aria-label="Peso por caja"></td>' +
+        '<td><label class="check"><input type="checkbox" id="s-' + ln.id + '" data-f="stack"' + (ln.stack ? ' checked' : '') + '> Sí</label></td>' +
+        '<td class="num cbm-cell" data-out="cbm"></td>' +
+        '<td class="num cbm-cell" data-out="wt"></td>' +
+        '<td><button type="button" class="del" data-del="' + ln.id + '" aria-label="Eliminar línea">×</button></td>' +
+        '</tr>';
+    }).join('');
+  }
+  rowsEl.addEventListener('input', function (e) {
+    var tr = e.target.closest('tr'); if (!tr) return;
+    var ln = state.lines.find(function (x) { return x.id == tr.dataset.id; }); if (!ln) return;
+    var f = e.target.dataset.f;
+    ln[f] = f === 'stack' ? e.target.checked : (f === 'desc' ? e.target.value : e.target.value);
+    markEdited(); recompute();
+  });
+  rowsEl.addEventListener('change', function (e) {
+    if (e.target.dataset.f === 'stack') {
+      var tr = e.target.closest('tr');
+      var ln = state.lines.find(function (x) { return x.id == tr.dataset.id; });
+      ln.stack = e.target.checked; markEdited(); recompute();
+    }
+  });
+  rowsEl.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-del]'); if (!b) return;
+    state.lines = state.lines.filter(function (x) { return x.id != b.dataset.del; });
+    markEdited(); renderRows(); recompute();
+  });
+  function markEdited() { state.isSample = false; $('sampleTag').hidden = true; }
+
+  $('addRow').addEventListener('click', function () {
+    var d = state.units === 'metric' ? { l: 50, w: 40, h: 30, wt: 10 } : { l: 20, w: 16, h: 12, wt: 22 };
+    state.lines.push(mkLine({ desc: '', l: d.l, w: d.w, h: d.h, qty: 1, wt: d.wt, stack: true }));
+    markEdited(); renderRows(); recompute();
+    var last = state.lines[state.lines.length - 1]; var el = $('d-' + last.id); if (el) el.focus();
+  });
+  $('clearAll').addEventListener('click', function () { state.lines = []; markEdited(); renderRows(); recompute(); });
+  $('loadSample').addEventListener('click', function () { loadSample(); $('sampleTag').hidden = false; renderRows(); recompute(); });
+
+  // ---------- Controles ----------
+  function setUnits(u) {
+    if (u === state.units) return;
+    var toImp = u === 'imperial';
+    state.lines.forEach(function (ln) {
+      ['l', 'w', 'h'].forEach(function (k) { ln[k] = r2(toImp ? num(ln[k]) / IN : num(ln[k]) * IN); });
+      ln.wt = r2(toImp ? num(ln.wt) / LB : num(ln.wt) * LB);
+    });
+    state.units = u;
+    $('u-metric').setAttribute('aria-pressed', String(u === 'metric'));
+    $('u-imperial').setAttribute('aria-pressed', String(u === 'imperial'));
+    renderRows(); syncCustomInputs(); recompute();
+  }
+  $('u-metric').addEventListener('click', function () { setUnits('metric'); });
+  $('u-imperial').addEventListener('click', function () { setUnits('imperial'); });
+  $('container').addEventListener('change', function (e) { state.container = e.target.value; $('customDims').classList.toggle('on', state.container === 'CUSTOM'); state.view = 0; recompute(true); });
+  $('airFactor').addEventListener('change', function (e) { state.airFactor = num(e.target.value); recompute(); });
+  $('tilt').addEventListener('change', function (e) { state.tilt = e.target.checked; recompute(); });
+  function syncCustomInputs() {
+    var f = lenF(), g = wtF();
+    $('c-l').value = r2(custom.L / f); $('c-w').value = r2(custom.W / f); $('c-h').value = r2(custom.H / f); $('c-p').value = r2(custom.payload / g);
+  }
+  ['c-l', 'c-w', 'c-h', 'c-p'].forEach(function (id) {
+    $(id).addEventListener('input', function () {
+      var f = lenF(), g = wtF();
+      var L = num($('c-l').value) * f, W = num($('c-w').value) * f, H = num($('c-h').value) * f, P = num($('c-p').value) * g;
+      if (L > 0 && W > 0 && H > 0 && P > 0) { custom = { L: L, W: W, H: H, payload: P }; recompute(true); }
+    });
+  });
+
+  // ---------- Cálculo ----------
+  var last = null;
+  function recompute(resetCam) {
+    var C = getContainer();
+    var ns = state.lines.map(norm);
+    var totVolCm = 0, totKg = 0, totBoxes = 0;
+    var rows = rowsEl.querySelectorAll('tr');
+    ns.forEach(function (n, i) {
+      var ok = validLine(n);
+      var vol = ok ? n.l * n.w * n.h * n.qty : 0;
+      var kg = ok ? n.wt * n.qty : 0;
+      totVolCm += vol; totKg += kg; totBoxes += ok ? n.qty : 0;
+      var tr = rows[i]; if (!tr) return;
+      var m3 = vol / 1e6;
+      tr.querySelector('[data-out="cbm"]').textContent = state.units === 'metric' ? fmt(m3, 3) + ' m³' : fmt(m3 * 35.3147, 2) + ' ft³';
+      tr.querySelector('[data-out="wt"]').textContent = state.units === 'metric' ? fmt(kg, 1) + ' kg' : fmt(kg / LB, 1) + ' lb';
+    });
+    var cbm = totVolCm / 1e6;
+    var volKg = totVolCm / state.airFactor;
+    var chargeable = Math.max(totKg, volKg);
+    var wm = Math.max(cbm, totKg / 1000);
+    var res = pack(ns.map(function (n) { return Object.assign({}, n); }), C, state.tilt);
+    var nC = res.containers.filter(function (c) { return c.boxes.length; }).length;
+    if (state.view >= res.containers.length) state.view = 0;
+
+    // Advertencias
+    rows.forEach(function (tr, i) { tr.classList.toggle('row-warn', res.unplaced.indexOf(i) >= 0 || res.tooHeavy.indexOf(i) >= 0); });
+    var msgs = [];
+    res.unplaced.forEach(function (i) { msgs.push('“' + (state.lines[i].desc || 'Línea ' + (i + 1)) + '” no cabe en el equipo seleccionado con la orientación permitida' + (state.tilt ? '.' : '. Prueba activar “Permitir voltear cajas”.')); });
+    res.tooHeavy.forEach(function (i) { msgs.push('“' + (state.lines[i].desc || 'Línea ' + (i + 1)) + '”: una sola caja excede la carga útil del equipo.'); });
+    $('msg').textContent = msgs.join(' ');
+
+    // Utilización del contenedor visible
+    var capVol = C.L * C.W * C.H;
+    var vc = res.containers[state.view] || { vol: 0, weight: 0, boxes: [] };
+    var placedBoxes = res.containers.reduce(function (s, c) { return s + c.boxes.length; }, 0);
+
+    last = { C: C, ns: ns, res: res, cbm: cbm, totKg: totKg, volKg: volKg, chargeable: chargeable, wm: wm, nC: nC, totBoxes: totBoxes, placedBoxes: placedBoxes };
+    renderKpis(last, vc, capVol);
+    renderLegend(ns);
+    renderRef();
+    build3D(resetCam);
+  }
+
+  function meter(pct) {
+    var cls = pct > 100 ? 'over' : pct >= 90 ? 'hi' : '';
+    return '<div class="meter" aria-hidden="true"><i class="' + cls + '" style="width:' + Math.min(100, pct).toFixed(1) + '%"></i></div>';
+  }
+  function renderKpis(d, vc, capVol) {
+    var imp = state.units === 'imperial';
+    var w = function (kg, dd) { return imp ? fmt(kg / LB, dd) + '<small>lb</small>' : fmt(kg, dd) + '<small>kg</small>'; };
+    var volPct = capVol ? vc.vol / capVol * 100 : 0;
+    var wPct = d.C.payload ? vc.weight / d.C.payload * 100 : 0;
+    var cName = d.C.name + (state.container === 'CUSTOM' ? '' : ' (' + state.container + ')');
+    var html = '' +
+      kpi('Volumen total', '<span class="v accent">' + fmt(d.cbm, 3) + '<small>m³</small></span>', fmt(d.cbm * 35.3147, 2) + ' ft³ · ' + fmt(d.totBoxes, 0) + ' bultos') +
+      kpi('Peso bruto', '<span class="v">' + w(d.totKg, 1) + '</span>', imp ? fmt(d.totKg, 1) + ' kg' : fmt(d.totKg / LB, 1) + ' lb') +
+      kpi('Aéreo · peso tasable', '<span class="v">' + w(d.chargeable, 1) + '</span>', 'Volumétrico ' + (imp ? fmt(d.volKg / LB, 1) + ' lb' : fmt(d.volKg, 1) + ' kg') + ' · cobra por ' + (d.volKg > d.totKg ? 'volumen' : 'peso')) +
+      kpi('Marítimo LCL · W/M', '<span class="v">' + fmt(d.wm, 3) + '<small>' + (d.cbm >= d.totKg / 1000 ? 'm³' : 't') + '</small></span>', 'Unidad de cobro: el mayor entre m³ y toneladas') +
+      kpi('Equipos necesarios', '<span class="v">' + fmt(d.nC, 0) + '<small>× ' + esc(d.C.name) + '</small></span>',
+        (d.placedBoxes < d.totBoxes ? '<span style="color:var(--bad)">' + fmt(d.totBoxes - d.placedBoxes, 0) + ' bultos sin acomodar</span>' : 'Según acomodo estimado')) +
+      kpi('Uso equipo ' + (state.view + 1) + ' de ' + d.res.containers.length, '<span class="v">' + fmt(volPct, 1) + '<small>% vol.</small></span>',
+        fmt(vc.vol / 1e6, 2) + ' de ' + fmt(capVol / 1e6, 2) + ' m³' + meter(volPct) +
+        '<span style="display:block;margin-top:8px">Peso ' + fmt(wPct, 1) + '% · ' + w(vc.weight, 0).replace(/<\/?small>/g, ' ') + 'de ' + w(d.C.payload, 0).replace(/<\/?small>/g, ' ') + '</span>' + meter(wPct));
+    $('kpis').innerHTML = html;
+    function kpi(label, v, s) { return '<div class="kpi"><span class="lbl">' + label + '</span>' + v + '<span class="s">' + s + '</span></div>'; }
+    $('pagerLbl').textContent = (d.res.containers.length ? state.view + 1 : 0) + ' / ' + d.res.containers.length;
+    $('prevC').disabled = state.view <= 0;
+    $('nextC').disabled = state.view >= d.res.containers.length - 1;
+    void cName;
+  }
+  function renderLegend(ns) {
+    var cont = last.res.containers[state.view];
+    var counts = {};
+    if (cont) cont.boxes.forEach(function (b) { counts[b.line] = (counts[b.line] || 0) + 1; });
+    $('legend').innerHTML = ns.map(function (n, i) {
+      if (!validLine(n)) return '';
+      return '<span><i class="sw" style="background:' + COLORS[i % COLORS.length] + '"></i>' + esc(state.lines[i].desc || 'Línea ' + (i + 1)) +
+        ' <span class="hint">' + fmt(counts[i] || 0, 0) + ' en este equipo</span></span>';
+    }).join('');
+  }
+  function renderRef() {
+    var f = state.units === 'metric';
+    $('refRows').innerHTML = Object.keys(CONTAINERS).map(function (k) {
+      var c = CONTAINERS[k];
+      return '<tr><th style="font-family:var(--font-sans);font-size:13px;text-transform:none;letter-spacing:0;color:var(--ink-body)">' + c.name + '</th><td class="num">' +
+        fmt(c.L / 100, 2) + ' × ' + fmt(c.W / 100, 2) + ' × ' + fmt(c.H / 100, 2) + '</td><td class="num">' + fmt(c.L * c.W * c.H / 1e6, 1) +
+        '</td><td class="num">' + (f ? fmt(c.payload, 0) + ' kg' : fmt(c.payload / LB, 0) + ' lb') + '</td></tr>';
+    }).join('');
+  }
+
+  // ---------- Copiar resumen ----------
+  $('copySummary').addEventListener('click', function () {
+    if (!last) return;
+    var d = last, imp = state.units === 'imperial';
+    var wt = function (kg) { return imp ? fmt(kg / LB, 1) + ' lb' : fmt(kg, 1) + ' kg'; };
+    var lines = ['Cardinal Point · Resumen de cubicaje', ''];
+    state.lines.forEach(function (ln, i) {
+      var u = imp ? 'in' : 'cm';
+      lines.push('- ' + (ln.desc || 'Línea ' + (i + 1)) + ': ' + ln.qty + ' pzas de ' + ln.l + ' × ' + ln.w + ' × ' + ln.h + ' ' + u + ', ' + ln.wt + (imp ? ' lb' : ' kg') + ' c/u' + (ln.stack ? '' : ' (no apilable)'));
+    });
+    lines.push('', 'Volumen total: ' + fmt(d.cbm, 3) + ' m³ (' + fmt(d.cbm * 35.3147, 2) + ' ft³)',
+      'Peso bruto: ' + wt(d.totKg),
+      'Aéreo (1:' + state.airFactor + '): volumétrico ' + wt(d.volKg) + ', tasable ' + wt(d.chargeable),
+      'LCL W/M: ' + fmt(d.wm, 3),
+      'Equipo: ' + d.nC + ' × ' + d.C.name + ' (acomodo estimado)',
+      '', 'Estimación. Sujeto a confirmación del transportista.');
+    var text = lines.join('\n');
+    var done = function (m) { $('copyMsg').textContent = m; setTimeout(function () { $('copyMsg').textContent = ''; }, 2500); };
+    try {
+      navigator.clipboard.writeText(text).then(function () { done('Resumen copiado'); }, function () { fallback(); });
+    } catch (e) { fallback(); }
+    function fallback() {
+      var ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done('Resumen copiado'); } catch (e) { done('No se pudo copiar'); }
+      document.body.removeChild(ta);
+    }
+  });
+
+  // ---------- 3D ----------
+  var viewerEl = $('viewer');
+  var three = null;
+  function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888'; }
+  function initThree() {
+    if (typeof THREE === 'undefined') { viewerEl.insertAdjacentHTML('beforeend', '<div class="webgl-off">No se pudo cargar el motor 3D. Revisa tu conexión y recarga la página.</div>'); return null; }
+    var renderer;
+    try { renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: false }); }
+    catch (e) { viewerEl.insertAdjacentHTML('beforeend', '<div class="webgl-off">Tu navegador no tiene WebGL activo; los cálculos siguen disponibles.</div>'); return null; }
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    viewerEl.insertBefore(renderer.domElement, viewerEl.firstChild);
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(40, 1, 0.05, 500);
+    var controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; controls.dampingFactor = 0.08; controls.maxPolarAngle = Math.PI * 0.495; controls.screenSpacePanning = true;
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 0.75));
+    var dir = new THREE.DirectionalLight(0xffffff, 0.65); dir.position.set(6, 12, 8); scene.add(dir);
+    var dir2 = new THREE.DirectionalLight(0xffffff, 0.25); dir2.position.set(-8, 5, -6); scene.add(dir2);
+    var root = new THREE.Group(); scene.add(root);
+    var t = { renderer: renderer, scene: scene, camera: camera, controls: controls, root: root, meshes: [], edges: null, order: [], dims: null, animating: false };
+    function resize() {
+      var w = viewerEl.clientWidth, h = viewerEl.clientHeight; if (!w || !h) return;
+      renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+    }
+    new ResizeObserver(resize).observe(viewerEl); resize();
+    (function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
+    return t;
+  }
+  function applyTheme() {
+    if (!three) return;
+    three.scene.background = new THREE.Color(cssVar('--scene'));
+    if (three.shell) {
+      three.shell.edge.material.color.set(cssVar('--scene-edge'));
+      three.shell.grid.material.color.set(cssVar('--scene-grid'));
+    }
+    if (three.edges) three.edges.material.color.set(cssVar('--scene-edge'));
+  }
+  function disposeGroup(g) {
+    while (g.children.length) {
+      var c = g.children.pop();
+      if (c.geometry) c.geometry.dispose();
+      if (c.material) c.material.dispose();
+    }
+  }
+  function build3D(resetCam) {
+    if (!three) return;
+    var d = last, C = d.C, S = 0.01; // cm -> m
+    disposeGroup(three.root);
+    var L = C.L * S, W = C.W * S, H = C.H * S;
+    var root = three.root;
+    root.position.set(-L / 2, 0, -W / 2);
+
+    // Casco del contenedor
+    var shellGeo = new THREE.BoxGeometry(L, H, W); shellGeo.translate(L / 2, H / 2, W / 2);
+    var edge = new THREE.LineSegments(new THREE.EdgesGeometry(shellGeo), new THREE.LineBasicMaterial({ color: cssVar('--scene-edge') }));
+    root.add(edge);
+    var wall = new THREE.Mesh(shellGeo, new THREE.MeshBasicMaterial({ color: cssVar('--steel'), transparent: true, opacity: 0.06, depthWrite: false, side: THREE.BackSide }));
+    root.add(wall);
+    var floorGeo = new THREE.PlaneGeometry(L, W); floorGeo.rotateX(-Math.PI / 2); floorGeo.translate(L / 2, 0.001, W / 2);
+    root.add(new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({ color: '#8C8576', roughness: 0.95 })));
+    // Rejilla de piso cada 1 m
+    var gp = [];
+    for (var gx = 1; gx < L; gx += 1) gp.push(gx, 0.003, 0, gx, 0.003, W);
+    var grid = new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(gp, 3)), new THREE.LineBasicMaterial({ color: cssVar('--scene-grid'), transparent: true, opacity: 0.8 }));
+    root.add(grid);
+    // Marco de puertas (x = L)
+    var door = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshBasicMaterial({ color: cssVar('--aqua'), transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide }));
+    door.rotation.y = Math.PI / 2; door.position.set(L, H / 2, W / 2); root.add(door);
+    three.shell = { edge: edge, grid: grid };
+
+    // Cajas
+    var cont = d.res.containers[state.view] || { boxes: [] };
+    var boxes = cont.boxes;
+    var byLine = {};
+    boxes.forEach(function (b, k) { (byLine[b.line] = byLine[b.line] || []).push(k); });
+    var unit = new THREE.BoxGeometry(1, 1, 1);
+    three.meshes = [];
+    var dummy = new THREE.Object3D(), gap = 0.004;
+    Object.keys(byLine).forEach(function (li) {
+      var idxs = byLine[li];
+      var mat = new THREE.MeshStandardMaterial({ color: COLORS[li % COLORS.length], roughness: 0.75, metalness: 0.0 });
+      var mesh = new THREE.InstancedMesh(unit, mat, idxs.length);
+      idxs.forEach(function (k, j) {
+        var b = boxes[k];
+        dummy.position.set((b.x + b.dx / 2) * S, (b.y + b.dy / 2) * S, (b.z + b.dz / 2) * S);
+        dummy.scale.set(Math.max(0.001, b.dx * S - gap), Math.max(0.001, b.dy * S - gap), Math.max(0.001, b.dz * S - gap));
+        dummy.updateMatrix(); mesh.setMatrixAt(j, dummy.matrix);
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.userData = { ranks: idxs };
+      root.add(mesh); three.meshes.push(mesh);
+    });
+    // Aristas de todas las cajas en una sola geometría (orden de carga)
+    var ep = new Float32Array(boxes.length * 72), o = 0;
+    boxes.forEach(function (b) {
+      var x0 = b.x * S, y0 = b.y * S, z0 = b.z * S, x1 = x0 + b.dx * S - gap, y1 = y0 + b.dy * S - gap, z1 = z0 + b.dz * S - gap;
+      x0 += gap / 2; y0 += gap / 2; z0 += gap / 2; x1 += gap / 2; y1 += gap / 2; z1 += gap / 2;
+      var v = [[x0,y0,z0],[x1,y0,z0],[x1,y1,z0],[x0,y1,z0],[x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1]];
+      [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]].forEach(function (e) {
+        ep[o++] = v[e[0]][0]; ep[o++] = v[e[0]][1]; ep[o++] = v[e[0]][2];
+        ep[o++] = v[e[1]][0]; ep[o++] = v[e[1]][1]; ep[o++] = v[e[1]][2];
+      });
+    });
+    var eg = new THREE.BufferGeometry(); eg.setAttribute('position', new THREE.BufferAttribute(ep, 3));
+    three.edges = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: cssVar('--scene-edge'), transparent: true, opacity: 0.35 }));
+    root.add(three.edges);
+
+    three.total = boxes.length;
+    var range = $('seqRange'); range.max = String(boxes.length); range.value = String(boxes.length);
+    setSequence(boxes.length);
+
+    // Overlay
+    var imp = state.units === 'imperial';
+    var dimTxt = imp ? fmt(C.L / IN / 12, 1) + ' × ' + fmt(C.W / IN / 12, 1) + ' × ' + fmt(C.H / IN / 12, 1) + ' ft' : fmt(L, 2) + ' × ' + fmt(W, 2) + ' × ' + fmt(H, 2) + ' m';
+    $('overlay').innerHTML = '<div class="chip"><b>' + esc(C.name) + '</b> · ' + dimTxt + '</div>' +
+      '<div class="chip">Cabecera a la izquierda · puertas a la derecha (zona aqua)</div>';
+    var nf = viewerEl.querySelector('.nofit'); if (nf) nf.remove();
+    if (!boxes.length) viewerEl.insertAdjacentHTML('beforeend', '<div class="nofit">Agrega al menos una línea válida para ver el acomodo.</div>');
+
+    if (resetCam || !three.dims || three.dims.L !== L || three.dims.H !== H || three.dims.W !== W) setView(currentView, true);
+    three.dims = { L: L, W: W, H: H };
+    applyTheme();
+  }
+  function setSequence(n) {
+    if (!three) return;
+    var count = 0;
+    three.meshes.forEach(function (m) {
+      var r = m.userData.ranks, lo = 0, hi = r.length;
+      while (lo < hi) { var mid = (lo + hi) >> 1; if (r[mid] < n) lo = mid + 1; else hi = mid; }
+      m.count = lo; count += lo;
+    });
+    if (three.edges) three.edges.geometry.setDrawRange(0, n * 24);
+    $('seqOut').textContent = fmt(n, 0) + ' de ' + fmt(three.total || 0, 0) + ' bultos';
+  }
+  $('seqRange').addEventListener('input', function (e) { stopPlay(); setSequence(parseInt(e.target.value, 10)); });
+
+  var playing = null;
+  function stopPlay() { if (playing) { cancelAnimationFrame(playing); playing = null; $('play').textContent = 'Simular carga'; } }
+  $('play').addEventListener('click', function () {
+    if (!three) return;
+    if (playing) { stopPlay(); return; }
+    var total = three.total || 0; if (!total) return;
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) { $('seqRange').value = total; setSequence(total); return; }
+    var dur = Math.min(9000, 2500 + total * 6), t0 = performance.now();
+    $('play').textContent = 'Detener';
+    (function step(now) {
+      var p = Math.min(1, (now - t0) / dur), n = Math.round(total * p);
+      $('seqRange').value = n; setSequence(n);
+      if (p < 1) playing = requestAnimationFrame(step); else stopPlay();
+    })(t0);
+  });
+
+  var currentView = 'iso';
+  function setView(v, instant) {
+    if (!three || !three.root) return;
+    currentView = v;
+    document.querySelectorAll('[data-view]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.view === v)); });
+    var C = last.C, L = C.L / 100, W = C.W / 100, H = C.H / 100;
+    var cam = three.camera, ctl = three.controls;
+    var fit = function (size) { return size / (2 * Math.tan(cam.fov * Math.PI / 360)) * 1.15; };
+    var aspect = cam.aspect || 1.6;
+    var target = new THREE.Vector3(0, H / 2, 0), pos;
+    if (v === 'side') pos = new THREE.Vector3(0, H / 2, Math.max(fit(H), fit(L / aspect)) + W / 2);
+    else if (v === 'door') pos = new THREE.Vector3(Math.max(fit(H), fit(W / aspect)) + L / 2, H / 2, 0);
+    else if (v === 'top') pos = new THREE.Vector3(0.0001, Math.max(fit(W), fit(L / aspect)) + H, 0.001);
+    else {
+      var rad = 0.5 * Math.sqrt(L * L + W * W + H * H);
+      var vf = cam.fov * Math.PI / 180, hf = 2 * Math.atan(Math.tan(vf / 2) * aspect);
+      var dist = rad / Math.sin(Math.min(vf, hf) / 2) * 0.92;
+      pos = new THREE.Vector3(0.55, 0.5, 0.67).normalize().multiplyScalar(dist).add(target);
+    }
+    ctl.maxPolarAngle = v === 'top' ? Math.PI : Math.PI * 0.495;
+    if (instant) { cam.position.copy(pos); ctl.target.copy(target); ctl.update(); return; }
+    var p0 = cam.position.clone(), t0 = ctl.target.clone(), start = performance.now();
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) { cam.position.copy(pos); ctl.target.copy(target); return; }
+    (function step(now) {
+      var k = Math.min(1, (now - start) / 550), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      cam.position.lerpVectors(p0, pos, e); ctl.target.lerpVectors(t0, target, e);
+      if (k < 1) requestAnimationFrame(step);
+    })(start);
+  }
+  document.querySelectorAll('[data-view]').forEach(function (b) { b.addEventListener('click', function () { setView(b.dataset.view); }); });
+  $('prevC').addEventListener('click', function () { if (state.view > 0) { state.view--; stopPlay(); recompute(); } });
+  $('nextC').addEventListener('click', function () { if (last && state.view < last.res.containers.length - 1) { state.view++; stopPlay(); recompute(); } });
+
+  // Tema: reacciona a cambios del sistema y del atributo data-theme
+  try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme); } catch (e) {}
+  new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  // ---------- Arranque ----------
+  loadSample();
+  renderRows();
+  syncCustomInputs();
+  three = initThree();
+  recompute(true);
+})();
+</script>
+</body>
+</html>
