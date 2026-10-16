@@ -61,9 +61,10 @@ body { background: var(--bg); color: var(--ink-body); font-family: var(--font-sa
 
 /* Banda de marca */
 .brand { background: linear-gradient(135deg, var(--slate-deep) 0%, var(--slate) 60%, var(--slate-mid) 100%); color: #F0EFEB; }
-.brand .wrap { padding-block: 22px 26px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 18px 32px; }
-.brand svg { width: 250px; max-width: 100%; height: auto; }
+.brand .wrap { padding-block: 26px 30px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 18px 32px; }
+.brand svg { width: 400px; max-width: 100%; height: auto; }
 .brand-title { display: grid; gap: 4px; min-width: 0; }
+.brand-title:first-child { flex: 0 1 400px; }
 .eyebrow { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--aqua); }
 .brand h1 { margin: 0; font-size: clamp(26px, 4vw, 36px); font-weight: 500; letter-spacing: -.01em; color: #FFFFFF; text-wrap: balance; }
 .brand p { margin: 0; color: #B9C8DA; max-width: 60ch; font-size: 14.5px; }
@@ -167,7 +168,7 @@ footer.wrap { padding-block: 0 32px; color: var(--muted); font-size: 12.5px; dis
 
 @media (max-width: 560px) {
   .kpi .v { font-size: 22px; }
-  .brand svg { width: 200px; }
+  .brand svg { width: 300px; }
 }
 @media (prefers-reduced-motion: reduce) { .meter i { transition: none; } }
 /* ---- v2: veredicto, equipos, reporte de carga ---- */
@@ -213,11 +214,58 @@ td select { font-size: 13px; padding: 6px 6px; }
 .rep td.n { font-family: var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .rep.extra { border-color: var(--bad); }
 .tag { display: inline-block; font-size: 11.5px; padding: 1px 7px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--line); margin-right: 4px; white-space: nowrap; }
+/* ---- v3: identificación por color/letra, impresión ---- */
+.pick { position: relative; display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 6px; border: 1px solid rgba(0,0,0,.2); cursor: pointer; font-family: var(--font-mono); font-size: 12.5px; font-weight: 500; color: #FFFFFF; }
+.pick.light { color: var(--slate-deep); }
+.pick input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
+.pick:focus-within { outline: 2px solid var(--focus); outline-offset: 1px; }
+.report-fields { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; margin-bottom: 14px; }
+.report-fields input { width: 220px; max-width: 100%; }
+.report-fields .ctl { min-width: 0; max-width: 100%; }
+.report-fields .ctl.wide input { width: 360px; }
+.rep-imgs { background: #ECEAE4; }
+.rep-sub { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border-top: 1px solid var(--line); }
+.rep-sub figure { margin: 0; background: #ECEAE4; min-width: 0; }
+.rep-sub img { display: block; width: 100%; height: auto; }
+.rep-sub figcaption, .rep-cap { font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #6E7F96; padding: 6px 10px; background: #F6F5F2; }
+@media (max-width: 640px) { .rep-sub { grid-template-columns: 1fr; } }
+.print-only { display: none; }
+@media print {
+  @page { size: letter; margin: 11mm; }
+  :root:not(#p), :root[data-theme="dark"]:not(#p) {
+    --bg: #FFFFFF; --surface: #FFFFFF; --surface-2: #F6F5F2; --ink: #1D3557; --ink-body: #273951; --muted: #6E7F96;
+    --line: #E4E2DB; --line-strong: #D6D3CA; --field: #FFFFFF; --ok: #2F7D5B; --warn: #B26B00; --bad: #B3383B; color-scheme: light;
+  }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { background: #FFFFFF; font-size: 10.5pt; }
+  .no-print, .brand, footer.wrap, .viewer-panel, .meter { display: none !important; }
+  .print-only { display: block; }
+  main.wrap { padding: 0; max-width: none; gap: 12px; }
+  section.panel { border: 0; padding: 0; background: none; }
+  .verdict { padding: 10px 14px; break-inside: avoid; }
+  .verdict .badge { color: #FFFFFF !important; }
+  .kpis { grid-template-columns: repeat(3, 1fr); break-inside: avoid; }
+  .kpi { padding: 10px 12px; }
+  .kpi .v { font-size: 18pt; }
+  .print-head { display: flex !important; justify-content: space-between; align-items: flex-end; gap: 20px; padding-bottom: 10px; border-bottom: 2px solid #1D3557; }
+  .ph-logo { width: 300px; height: auto; }
+  .rep { break-inside: avoid; page-break-inside: avoid; border-color: #D6D3CA; }
+  .rep + .rep { break-before: page; page-break-before: always; }
+  .rep table, .ps table { min-width: 0; font-size: 9pt; }
+  .table-scroll { overflow: visible; }
+  #h-rep { break-before: page; page-break-before: always; margin-bottom: 8px; }
+}
+.ph-meta { text-align: right; font-size: 10pt; color: #273951; }
+.ph-meta .ph-title { font-size: 18pt; font-weight: 600; color: #1D3557; }
+.ps h2 { margin: 6px 0 8px; }
+.ps table { font-size: 12.5px; }
+.ps td.n { font-family: var(--font-mono); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.print-foot { font-size: 8.5pt; color: #6E7F96; border-top: 1px solid #D6D3CA; padding-top: 6px; margin-top: 10px; }
 </style>
 </head>
 <body>
 
-<header class="brand">
+<header class="brand no-print">
   <div class="wrap">
     <div class="brand-title">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 140" role="img" aria-label="Cardinal Point">
@@ -242,10 +290,31 @@ td select { font-size: 13px; padding: 6px 6px; }
 </header>
 
 <main class="wrap">
-  <section class="panel" aria-labelledby="h-carga">
+  <div class="print-only print-head">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 140" role="img" aria-label="Cardinal Point" class="ph-logo">
+<g transform="translate(70, 70) scale(0.85)">
+<polygon points="0,-56 -14,-14 0,-20 14,-14" fill="#1D3557"></polygon>
+<polygon points="0,56 -14,14 0,20 14,14" fill="#1D3557" fill-opacity="0.35"></polygon>
+<polygon points="-56,0 -14,-14 -20,0 -14,14" fill="#1D3557" fill-opacity="0.35"></polygon>
+<polygon points="56,0 14,-14 20,0 14,14" fill="#EB6366"></polygon>
+<circle cx="0" cy="0" r="4.5" fill="#1D3557"></circle>
+<circle cx="0" cy="0" r="11" fill="none" stroke="#1D3557" stroke-width="0.5" stroke-opacity="0.2"></circle>
+</g>
+<text x="150" y="84" font-family="DM Sans, Inter, Helvetica, Arial, sans-serif" font-size="38" font-weight="500" letter-spacing="5" fill="#1D3557">CARDINAL POINT</text>
+<circle cx="540" cy="78" r="6" fill="#EB6366"></circle>
+</svg>
+    <div class="ph-meta"><div class="ph-title">Plan de carga</div><div id="phInfo"></div></div>
+  </div>
+  <section class="panel no-print" aria-labelledby="h-carga">
     <div class="panel-head">
       <h2 id="h-carga">Carga y equipo</h2>
       <span class="sample-tag" id="sampleTag">Datos de ejemplo</span>
+    </div>
+
+    <div class="report-fields">
+      <label class="ctl"><span>Cliente</span><input type="text" id="r-client" placeholder="Nombre del cliente"></label>
+      <label class="ctl"><span>Referencia / cotización</span><input type="text" id="r-ref" placeholder="Ej. COT-2026-0142"></label>
+      <label class="ctl wide"><span>Notas para el reporte</span><input type="text" id="r-notes" placeholder="Origen, destino, condiciones de carga…"></label>
     </div>
 
     <div class="controls">
@@ -269,6 +338,14 @@ td select { font-size: 13px; padding: 6px 6px; }
         <select id="airFactor">
           <option value="6000" selected>1:6000 (IATA, 167 kg/m³)</option>
           <option value="5000">1:5000 (courier, 200 kg/m³)</option>
+        </select>
+      </label>
+      <label class="ctl">
+        <span>Identificar líneas por</span>
+        <select id="labelMode">
+          <option value="both" selected>Letra y color</option>
+          <option value="color">Solo color</option>
+          <option value="letter">Solo letra</option>
         </select>
       </label>
     </div>
@@ -316,9 +393,15 @@ td select { font-size: 13px; padding: 6px 6px; }
   </section>
 
   <section aria-labelledby="h-res" style="display:grid;gap:12px">
+    <p class="print-only" id="phNotes" style="margin:0"></p>
     <h2 id="h-res">Resultado</h2>
     <div class="verdict" id="verdict" aria-live="polite"></div>
     <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section class="print-only ps" aria-label="Detalle de la carga">
+    <h2>Detalle de la carga</h2>
+    <div class="table-scroll" id="printSummary"></div>
   </section>
 
   <section class="panel viewer-panel" aria-labelledby="h-3d">
@@ -358,12 +441,17 @@ td select { font-size: 13px; padding: 6px 6px; }
   <section class="panel" aria-labelledby="h-rep">
     <div class="panel-head">
       <h2 id="h-rep">Reporte de carga por equipo</h2>
-      <span class="hint">Un reporte por cada equipo que requiere la carga</span>
+      <div class="no-print" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+        <span class="hint" id="printHint">Un reporte por cada equipo que requiere la carga</span>
+        <button type="button" class="btn primary" id="printPlan">Imprimir plano de carga</button>
+      </div>
     </div>
     <div class="report" id="report"></div>
   </section>
 
-  <section class="panel" aria-labelledby="h-sup">
+  <p class="print-only print-foot">Cardinal Point · MX · US · CA — Cálculo estimado con medidas de referencia del equipo. No sustituye la confirmación de espacio y peso de la línea transportista o naviera; el peso por eje y los amarres no están considerados.</p>
+
+  <section class="panel no-print" aria-labelledby="h-sup">
     <div class="panel-head"><h2 id="h-sup">Supuestos y referencias</h2><span class="hint">Valores de referencia. Validar con naviera, línea transportista o la unidad real.</span></div>
     <div class="notes">
       <div>
@@ -418,7 +506,9 @@ td select { font-size: 13px; padding: 6px 6px; }
     { key: 'CUSTOM', group: 'Otro', name: 'Personalizado', L: 1000, W: 240, H: 250, payload: 10000, variable: true }
   ];
   var TYPES = { caja: 'Caja', pallet: 'Pallet / tarima', crate: 'Guacal / crate' };
-  var COLORS = ['#E07A5F', '#457B9D', '#E9C46A', '#2A9D8F', '#6D597A', '#A8DADC', '#8AB17D', '#C9BFA8', '#5E7F9E', '#D08C60', '#9DB4C8', '#B5838D'];
+  // Paleta de Cardinal Point (Dark Slate, Steel Blue, Aqua Mist y sus tonos). Cada línea puede cambiar su color.
+  var COLORS = ['#1D3557', '#A8DADC', '#457B9D', '#D6D3CA', '#8496AD', '#2F6B8A', '#C7D8E2', '#4A5F7A', '#7FB3C8', '#B9B4A8'];
+  var LETTER_ONLY = '#C7D8E2';
   var IN = 2.54, LB = 0.45359237;
   var SAMPLE = [
     { type: 'pallet', desc: 'Pallet producto terminado', l: 120, w: 100, h: 150, qty: 16, wt: 520, stack: false, tilt: false },
@@ -428,13 +518,13 @@ td select { font-size: 13px; padding: 6px 6px; }
   ];
 
   // ---------- Estado ----------
-  var state = { units: 'metric', equip: '53FT', overrides: {}, airFactor: 6000, avail: 1, lines: [], view: 0, isSample: true };
+  var state = { units: 'metric', equip: '53FT', overrides: {}, airFactor: 6000, avail: 1, labelMode: 'both', lines: [], view: 0, isSample: true };
   var nextId = 1;
-  function mkLine(o) { return { id: nextId++, type: o.type || 'caja', desc: o.desc || '', l: o.l, w: o.w, h: o.h, qty: o.qty, wt: o.wt, stack: o.stack !== false, tilt: !!o.tilt }; }
+  function mkLine(o, pos) { return { id: nextId++, type: o.type || 'caja', desc: o.desc || '', l: o.l, w: o.w, h: o.h, qty: o.qty, wt: o.wt, stack: o.stack !== false, tilt: !!o.tilt, color: o.color || COLORS[pos % COLORS.length] }; }
   function loadSample() {
-    state.lines = SAMPLE.map(function (s) {
-      if (state.units === 'metric') return mkLine(s);
-      return mkLine({ type: s.type, desc: s.desc, l: r2(s.l / IN), w: r2(s.w / IN), h: r2(s.h / IN), qty: s.qty, wt: r2(s.wt / LB), stack: s.stack, tilt: s.tilt });
+    state.lines = SAMPLE.map(function (s, k) {
+      if (state.units === 'metric') return mkLine(s, k);
+      return mkLine({ type: s.type, desc: s.desc, l: r2(s.l / IN), w: r2(s.w / IN), h: r2(s.h / IN), qty: s.qty, wt: r2(s.wt / LB), stack: s.stack, tilt: s.tilt }, k);
     });
     state.isSample = true;
   }
@@ -448,7 +538,10 @@ td select { font-size: 13px; padding: 6px 6px; }
   function wtF() { return state.units === 'metric' ? 1 : LB; }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function letterOf(i) { var s = ''; i++; while (i > 0) { var m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
-  function colorOf(i) { return COLORS[i % COLORS.length]; }
+  function lineColor(i) { return (state.lines[i] && state.lines[i].color) || COLORS[i % COLORS.length]; }
+  function colorOf(i) { return state.labelMode === 'letter' ? LETTER_ONLY : lineColor(i); }
+  function showLetter() { return state.labelMode !== 'color'; }
+  function chip(i) { var col = colorOf(i); return '<span class="letter' + (isLight(col) ? ' light' : '') + '" style="background:' + col + '">' + (showLetter() ? letterOf(i) : '') + '</span>'; }
   function isLight(hex) { var c = parseInt(hex.slice(1), 16), r = c >> 16, g = (c >> 8) & 255, b = c & 255; return (r * 299 + g * 587 + b * 114) / 1000 > 150; }
   function lineName(i) { return state.lines[i] && state.lines[i].desc ? state.lines[i].desc : 'Línea ' + letterOf(i); }
   function equipDef(key) { return EQUIP.filter(function (e) { return e.key === key; })[0]; }
@@ -559,9 +652,10 @@ td select { font-size: 13px; padding: 6px 6px; }
     document.querySelectorAll('.u-len').forEach(function (e) { e.textContent = lu; });
     document.querySelectorAll('.u-wt').forEach(function (e) { e.textContent = wu; });
     rowsEl.innerHTML = state.lines.map(function (ln, i) {
-      var col = colorOf(i);
+      var col = lineColor(i);
       return '<tr data-id="' + ln.id + '">' +
-        '<td><span class="letter' + (isLight(col) ? ' light' : '') + '" style="background:' + col + '">' + letterOf(i) + '</span></td>' +
+        '<td><label class="pick' + (isLight(col) ? ' light' : '') + '" style="background:' + col + '" title="Cambiar color de la línea ' + letterOf(i) + '">' + letterOf(i) +
+        '<input type="color" id="c-' + ln.id + '" data-f="color" value="' + col + '" aria-label="Color de la línea ' + letterOf(i) + '"></label></td>' +
         '<td><select id="t-' + ln.id + '" data-f="type" aria-label="Tipo de bulto">' + Object.keys(TYPES).map(function (k) { return '<option value="' + k + '"' + (ln.type === k ? ' selected' : '') + '>' + TYPES[k] + '</option>'; }).join('') + '</select></td>' +
         '<td><input type="text" id="d-' + ln.id + '" data-f="desc" value="' + esc(ln.desc) + '" placeholder="Línea ' + letterOf(i) + '" aria-label="Descripción"></td>' +
         '<td class="num"><input type="number" id="l-' + ln.id + '" data-f="l" min="0" step="any" value="' + ln.l + '" aria-label="Largo"></td>' +
@@ -585,6 +679,11 @@ td select { font-size: 13px; padding: 6px 6px; }
   rowsEl.addEventListener('input', function (e) {
     var ln = lineFromEvent(e), f = e.target.dataset.f; if (!ln || !f) return;
     if (f === 'stack' || f === 'tilt') ln[f] = e.target.checked;
+    else if (f === 'color') {
+      ln.color = e.target.value;
+      var lab = e.target.parentNode; lab.style.background = ln.color; lab.classList.toggle('light', isLight(ln.color));
+      schedule(); return;
+    }
     else if (f !== 'type') ln[f] = e.target.value;
     markEdited(); schedule();
   });
@@ -607,7 +706,7 @@ td select { font-size: 13px; padding: 6px 6px; }
 
   $('addRow').addEventListener('click', function () {
     var d = state.units === 'metric' ? { l: 120, w: 100, h: 120, wt: 400 } : { l: 48, w: 40, h: 48, wt: 880 };
-    state.lines.push(mkLine({ type: 'pallet', desc: '', l: d.l, w: d.w, h: d.h, qty: 1, wt: d.wt, stack: false, tilt: false }));
+    state.lines.push(mkLine({ type: 'pallet', desc: '', l: d.l, w: d.w, h: d.h, qty: 1, wt: d.wt, stack: false, tilt: false }, state.lines.length));
     markEdited(); renderRows(); recompute();
     var el = $('d-' + state.lines[state.lines.length - 1].id); if (el) el.focus();
   });
@@ -632,6 +731,8 @@ td select { font-size: 13px; padding: 6px 6px; }
   $('container').addEventListener('change', function (e) { state.equip = e.target.value; state.view = 0; syncDims(); recompute(true); });
   $('avail').addEventListener('input', function (e) { state.avail = Math.max(1, Math.floor(num(e.target.value)) || 1); recompute(); });
   $('airFactor').addEventListener('change', function (e) { state.airFactor = num(e.target.value); recompute(); });
+  $('labelMode').addEventListener('change', function (e) { state.labelMode = e.target.value; recompute(); });
+  ['r-client', 'r-ref', 'r-notes'].forEach(function (id) { $(id).addEventListener('input', renderPrintHead); });
   function syncDims() {
     var C = getContainer(), f = lenF(), g = wtF();
     $('c-l').value = r2(C.L / f); $('c-w').value = r2(C.W / f); $('c-h').value = r2(C.H / f); $('c-p').value = r2(C.payload / g);
@@ -746,8 +847,7 @@ td select { font-size: 13px; padding: 6px 6px; }
     if (cont) cont.boxes.forEach(function (b) { counts[b.line] = (counts[b.line] || 0) + 1; });
     $('legend').innerHTML = last.ns.map(function (n, i) {
       if (!validLine(n)) return '';
-      var col = colorOf(i);
-      return '<span><i class="letter' + (isLight(col) ? ' light' : '') + '" style="background:' + col + ';font-style:normal">' + letterOf(i) + '</i>' + esc(lineName(i)) +
+      return '<span>' + chip(i) + esc(lineName(i)) +
         ' <span class="hint">' + fmt(counts[i] || 0, 0) + ' en este equipo</span></span>';
     }).join('');
   }
@@ -790,7 +890,7 @@ td select { font-size: 13px; padding: 6px 6px; }
   function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888'; }
   var texCache = {};
   function textureFor(i, type) {
-    var key = i + '|' + type + '|' + colorOf(i);
+    var key = i + '|' + type + '|' + colorOf(i) + '|' + state.labelMode;
     if (texCache[key]) return texCache[key];
     var cv = document.createElement('canvas'); cv.width = cv.height = 128;
     var g = cv.getContext('2d'), col = colorOf(i);
@@ -808,7 +908,7 @@ td select { font-size: 13px; padding: 6px 6px; }
     g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 6; g.strokeRect(0, 0, 128, 128);
     g.fillStyle = isLight(col) ? '#14263D' : '#FFFFFF';
     g.font = '600 56px "DM Sans", Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText(letterOf(i), 64, 68);
+    if (showLetter()) g.fillText(letterOf(i), 64, 68);
     var t = new THREE.CanvasTexture(cv); t.anisotropy = 4;
     texCache[key] = t; return t;
   }
@@ -855,7 +955,7 @@ td select { font-size: 13px; padding: 6px 6px; }
     g.add(edge);
     g.add(new THREE.Mesh(shellGeo, new THREE.MeshBasicMaterial({ color: '#457B9D', transparent: true, opacity: 0.06, depthWrite: false, side: THREE.BackSide })));
     var floorGeo = new THREE.PlaneGeometry(L, W); floorGeo.rotateX(-Math.PI / 2); floorGeo.translate(L / 2, 0.001, W / 2);
-    g.add(new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({ color: '#8C8576', roughness: 0.95 })));
+    g.add(new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({ color: '#A39E92', roughness: 0.95 })));
     var gp = [];
     for (var gx = 1; gx < L; gx += 1) gp.push(gx, 0.003, 0, gx, 0.003, W);
     var grid = new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(gp, 3)), new THREE.LineBasicMaterial({ color: colors.grid, transparent: true, opacity: 0.8 }));
@@ -1009,16 +1109,30 @@ td select { font-size: 13px; padding: 6px 6px; }
   var reportTimer = null;
   function scheduleReport() { clearTimeout(reportTimer); reportTimer = setTimeout(renderReport, 300); }
   function snapshot(ci) {
-    if (!snap) return '';
-    var b = buildGroup(ci, { edge: '#1D3557', grid: '#CFCBC0' });
+    if (!snap) return {};
+    var b = buildGroup(ci, { edge: '#1D3557', grid: '#CFCBC0' }), cam = snap.camera, out = {};
     snap.scene.add(b.group);
-    var p = isoPose(snap.camera, b.L, b.W, b.H, 0.66);
-    snap.camera.position.copy(p.pos); snap.camera.lookAt(p.target);
-    snap.renderer.render(snap.scene, snap.camera);
-    var url = '';
-    try { url = snap.renderer.domElement.toDataURL('image/jpeg', 0.85); } catch (e) { url = ''; }
+    function shot(view, w, h) {
+      snap.renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix();
+      var vf = cam.fov * Math.PI / 180, hf = 2 * Math.atan(Math.tan(vf / 2) * cam.aspect), dist;
+      cam.up.set(0, 1, 0);
+      if (view === 'iso') { var p = isoPose(cam, b.L, b.W, b.H, 0.66); cam.position.copy(p.pos); cam.lookAt(p.target); }
+      else if (view === 'top') {
+        dist = Math.max(b.L * 1.06 / (2 * Math.tan(hf / 2)), b.W * 1.15 / (2 * Math.tan(vf / 2))) + b.H;
+        cam.up.set(0, 0, -1); cam.position.set(0, dist, 0); cam.lookAt(0, 0, 0);
+      } else {
+        dist = Math.max(b.L * 1.06 / (2 * Math.tan(hf / 2)), b.H * 1.15 / (2 * Math.tan(vf / 2))) + b.W / 2;
+        cam.position.set(0, b.H / 2, dist); cam.lookAt(0, b.H / 2, 0);
+      }
+      snap.renderer.render(snap.scene, cam);
+      try { return snap.renderer.domElement.toDataURL('image/jpeg', 0.86); } catch (e) { return ''; }
+    }
+    out.iso = shot('iso', 960, 480);
+    out.top = shot('top', 1200, 330);
+    out.side = shot('side', 1200, 330);
+    cam.up.set(0, 1, 0);
     snap.scene.remove(b.group); disposeObj(b.group);
-    return url;
+    return out;
   }
   function renderReport() {
     var d = last, C = d.C, imp = state.units === 'imperial', u = imp ? 'in' : 'cm', capVol = C.L * C.W * C.H;
@@ -1028,8 +1142,8 @@ td select { font-size: 13px; padding: 6px 6px; }
       var counts = {};
       c.boxes.forEach(function (b) { counts[b.line] = (counts[b.line] || 0) + 1; });
       var rows = Object.keys(counts).map(Number).sort(function (a, b) { return a - b; }).map(function (i) {
-        var ln = state.lines[i], col = colorOf(i), n = d.ns[i];
-        return '<tr><td><span class="letter' + (isLight(col) ? ' light' : '') + '" style="background:' + col + '">' + letterOf(i) + '</span></td>' +
+        var ln = state.lines[i], n = d.ns[i];
+        return '<tr><td>' + chip(i) + '</td>' +
           '<td>' + esc(lineName(i)) + '<br><span class="hint">' + TYPES[ln.type] + '</span></td>' +
           '<td class="n">' + fmt(counts[i], 0) + '</td>' +
           '<td class="n">' + ln.l + ' × ' + ln.w + ' × ' + ln.h + ' ' + u + '</td>' +
@@ -1037,11 +1151,14 @@ td select { font-size: 13px; padding: 6px 6px; }
           '<td><span class="tag">' + (ln.stack ? 'Apilable' : 'No apilar') + '</span><span class="tag">' + (ln.tilt ? 'Se puede voltear' : 'Este lado arriba') + '</span></td></tr>';
       }).join('');
       var extra = ci >= state.avail;
-      var img = ci < 12 ? snapshot(ci) : '';
+      var img = ci < 12 ? snapshot(ci) : {};
       return '<article class="rep' + (extra ? ' extra' : '') + '">' +
         '<div class="rep-head"><h3>Reporte ' + String(ci + 1).padStart(3, '0') + ' · ' + esc(C.name) + (extra ? ' · <span style="color:var(--bad)">equipo adicional, excede los disponibles</span>' : '') + '</h3>' +
         '<span class="meta">' + fmt(C.L, 1) + ' × ' + fmt(C.W, 1) + ' × ' + fmt(C.H, 1) + ' cm int.</span></div>' +
-        '<div class="rep-body"><div>' + (img ? '<img alt="Plano de carga del equipo ' + (ci + 1) + '" src="' + img + '">' : '<p class="hint" style="padding:18px">Vista 3D disponible en el visor.</p>') + '</div>' +
+        '<div class="rep-body"><div>' + (img.iso ? '<div class="rep-imgs"><img alt="Plano de carga 3D del equipo ' + (ci + 1) + '" src="' + img.iso + '">' +
+          '<div class="rep-sub"><figure><img alt="Vista en planta del equipo ' + (ci + 1) + '" src="' + img.top + '"><figcaption>Planta · cabecera a la izquierda, puertas a la derecha</figcaption></figure>' +
+          '<figure><img alt="Vista lateral del equipo ' + (ci + 1) + '" src="' + img.side + '"><figcaption>Lateral · cabecera a la izquierda</figcaption></figure></div></div>'
+          : '<p class="hint" style="padding:18px">Vista 3D disponible en el visor.</p>') + '</div>' +
         '<div><div class="rep-stats">' +
         '<span>Peso <b>' + wtTxt(c.weight, 1) + '</b> (' + fmt(c.weight / C.payload * 100, 0) + '%)</span>' +
         '<span>Volumen <b>' + fmt(c.vol / 1e6, 2) + ' m³</b> (' + fmt(c.vol / capVol * 100, 0) + '%)</span>' +
@@ -1057,7 +1174,41 @@ td select { font-size: 13px; padding: 6px 6px; }
         pending.map(function (p, i) { return p > 0 ? '<p style="margin:4px 0">' + letterOf(i) + '. ' + esc(lineName(i)) + ': ' + fmt(p, 0) + ' bultos no caben en este tipo de equipo.</p>' : ''; }).join('') + '</div></article>';
     }
     $('report').innerHTML = html;
+    renderPrintSummary();
+    renderPrintHead();
   }
+  function renderPrintSummary() {
+    var d = last, imp = state.units === 'imperial', u = imp ? 'in' : 'cm';
+    var rows = state.lines.map(function (ln, i) {
+      var n = d.ns[i]; if (!validLine(n)) return '';
+      return '<tr><td>' + chip(i) + '</td><td>' + esc(lineName(i)) + '<br><span class="hint">' + TYPES[ln.type] + '</span></td>' +
+        '<td class="n">' + ln.l + ' × ' + ln.w + ' × ' + ln.h + ' ' + u + '</td><td class="n">' + fmt(n.qty, 0) + '</td>' +
+        '<td class="n">' + wtTxt(n.wt, 1) + '</td><td class="n">' + fmt(n.l * n.w * n.h * n.qty / 1e6, 3) + ' m³</td><td class="n">' + wtTxt(n.wt * n.qty, 1) + '</td>' +
+        '<td><span class="tag">' + (ln.stack ? 'Apilable' : 'No apilar') + '</span><span class="tag">' + (ln.tilt ? 'Se puede voltear' : 'Este lado arriba') + '</span></td>' +
+        '<td class="n">' + fmt(d.loaded[i], 0) + '/' + fmt(n.qty, 0) + '</td></tr>';
+    }).join('');
+    $('printSummary').innerHTML = '<table><thead><tr><th></th><th>Descripción</th><th class="num">L × A × H</th><th class="num">Cant.</th><th class="num">Peso c/u</th><th class="num">Volumen</th><th class="num">Peso total</th><th>Restricciones</th><th class="num">Cargado</th></tr></thead><tbody>' + rows +
+      '<tr><td></td><td><b>Total</b></td><td></td><td class="n"><b>' + fmt(d.totBoxes, 0) + '</b></td><td></td><td class="n"><b>' + fmt(d.cbm, 3) + ' m³</b></td><td class="n"><b>' + wtTxt(d.totKg, 1) + '</b></td><td></td><td class="n"><b>' + fmt(d.placedAvail, 0) + '/' + fmt(d.totBoxes, 0) + '</b></td></tr></tbody></table>';
+  }
+  function renderPrintHead() {
+    if (!last) return;
+    var C = last.C, client = $('r-client').value.trim(), ref = $('r-ref').value.trim(), notes = $('r-notes').value.trim();
+    var today = new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+    $('phInfo').innerHTML = (client ? '<div><b>' + esc(client) + '</b></div>' : '') + (ref ? '<div>Ref. ' + esc(ref) + '</div>' : '') +
+      '<div>' + state.avail + ' × ' + esc(C.name) + ' · ' + fmt(C.L / 100, 2) + ' × ' + fmt(C.W / 100, 2) + ' × ' + fmt(C.H / 100, 2) + ' m int.</div><div>' + today + '</div>';
+    $('phNotes').textContent = notes ? 'Notas: ' + notes : '';
+  }
+  // La vista previa embebida no permite imprimir; el botón se activa en la página publicada.
+  var framed = false;
+  try { framed = window.self !== window.top; } catch (e) { framed = true; }
+  if (framed) {
+    $('printPlan').hidden = true;
+    $('printHint').textContent = 'La impresión se activa en la página publicada de la calculadora.';
+  }
+  $('printPlan').addEventListener('click', function () {
+    clearTimeout(reportTimer); renderReport();
+    setTimeout(function () { window.print(); }, 50);
+  });
 
   try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme); } catch (e) {}
   new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
