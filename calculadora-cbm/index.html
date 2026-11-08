@@ -261,6 +261,97 @@ td select { font-size: 13px; padding: 6px 6px; }
 .ps table { font-size: 12.5px; }
 .ps td.n { font-family: var(--font-mono); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .print-foot { font-size: 8.5pt; color: #6E7F96; border-top: 1px solid #D6D3CA; padding-top: 6px; margin-top: 10px; }
+
+/* ---- v4: interfaz de vidrio (estilo Apple) con la paleta de Cardinal Point ---- */
+:root {
+  --glass: rgba(255,255,255,.58); --glass-strong: rgba(255,255,255,.74); --glass-border: rgba(255,255,255,.75);
+  --glass-edge: rgba(29,53,87,.10); --glass-shadow: 0 10px 40px rgba(29,53,87,.10), 0 1px 2px rgba(29,53,87,.06);
+  --glass-hi: inset 0 1px 0 rgba(255,255,255,.85); --field-glass: rgba(255,255,255,.62); --seg-on: #FFFFFF; --seg-on-ink: #1D3557;
+  --bg-a: rgba(168,218,220,.55); --bg-b: rgba(69,123,157,.28); --bg-c: rgba(214,211,202,.55); --bg-base: #EEF2F5;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --glass: rgba(26,47,74,.48); --glass-strong: rgba(26,47,74,.66); --glass-border: rgba(168,218,220,.16);
+  --glass-edge: rgba(168,218,220,.12); --glass-shadow: 0 12px 44px rgba(0,0,0,.35); --glass-hi: inset 0 1px 0 rgba(255,255,255,.08);
+  --field-glass: rgba(10,22,38,.45); --seg-on: rgba(255,255,255,.16); --seg-on-ink: #FFFFFF;
+  --bg-a: rgba(69,123,157,.38); --bg-b: rgba(168,218,220,.14); --bg-c: rgba(36,64,95,.65); --bg-base: #0B1626;
+} }
+:root[data-theme="dark"] {
+  --glass: rgba(26,47,74,.48); --glass-strong: rgba(26,47,74,.66); --glass-border: rgba(168,218,220,.16);
+  --glass-edge: rgba(168,218,220,.12); --glass-shadow: 0 12px 44px rgba(0,0,0,.35); --glass-hi: inset 0 1px 0 rgba(255,255,255,.08);
+  --field-glass: rgba(10,22,38,.45); --seg-on: rgba(255,255,255,.16); --seg-on-ink: #FFFFFF;
+  --bg-a: rgba(69,123,157,.38); --bg-b: rgba(168,218,220,.14); --bg-c: rgba(36,64,95,.65); --bg-base: #0B1626;
+}
+body { background: var(--bg-base); position: relative; isolation: isolate; }
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(60vw 50vh at 8% 12%, var(--bg-a), transparent 70%),
+    radial-gradient(50vw 60vh at 92% 30%, var(--bg-b), transparent 70%),
+    radial-gradient(70vw 50vh at 40% 100%, var(--bg-c), transparent 70%),
+    var(--bg-base);
+}
+.glassy, section.panel, .verdict, .kpi, .rep, .info, .dims {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(24px) saturate(170%); backdrop-filter: blur(24px) saturate(170%);
+  border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow), var(--glass-hi);
+}
+section.panel { border-radius: 24px; }
+.viewer-panel { overflow: hidden; }
+.kpis { background: none; border: 0; gap: 12px; overflow: visible; border-radius: 0; }
+.kpi { border-radius: 18px; }
+.verdict { border-radius: 20px; }
+.rep { border-radius: 20px; }
+.dims { border-radius: 16px; background: var(--glass-strong); }
+.info { border-radius: 16px; background: var(--glass-strong); }
+.brand { background: linear-gradient(135deg, rgba(20,38,61,.96) 0%, rgba(29,53,87,.94) 55%, rgba(36,64,95,.92) 100%); box-shadow: 0 10px 40px rgba(20,38,61,.25); position: relative; }
+.brand::after { content: ""; position: absolute; inset: auto 0 0 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(168,218,220,.5), transparent); }
+select, input[type="number"], input[type="text"] {
+  background: var(--field-glass); border: 1px solid var(--glass-edge); border-radius: 10px;
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: inset 0 1px 2px rgba(29,53,87,.06);
+}
+.btn { border-radius: 999px; background: var(--glass-strong); border: 1px solid var(--glass-border); box-shadow: 0 2px 10px rgba(29,53,87,.08), var(--glass-hi); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); padding: 8px 16px; }
+.btn:hover { border-color: var(--glass-border); filter: brightness(1.03); }
+.btn.primary { background: linear-gradient(180deg, #2A4A73 0%, #1D3557 100%); border-color: rgba(255,255,255,.18); color: #FFFFFF; box-shadow: 0 6px 18px rgba(29,53,87,.28), inset 0 1px 0 rgba(255,255,255,.22); }
+.btn.primary:hover { background: linear-gradient(180deg, #31557F 0%, #24405F 100%); }
+.seg { border-radius: 999px; padding: 3px; gap: 2px; background: var(--field-glass); border: 1px solid var(--glass-edge); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.seg button { border-radius: 999px; padding: 6px 14px; }
+.seg button + button { border-left: 0; }
+.seg button[aria-pressed="true"], :root[data-theme="dark"] .seg button[aria-pressed="true"] { background: var(--seg-on); color: var(--seg-on-ink); box-shadow: 0 2px 8px rgba(29,53,87,.14), var(--glass-hi); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .seg button[aria-pressed="true"] { background: var(--seg-on); color: var(--seg-on-ink); } }
+.table-scroll { border-radius: 16px; border-color: var(--glass-edge); background: rgba(255,255,255,.18); }
+thead th { background: rgba(255,255,255,.22); }
+:root[data-theme="dark"] .table-scroll, :root[data-theme="dark"] thead th { background: rgba(10,22,38,.25); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .table-scroll, :root:not([data-theme="light"]) thead th { background: rgba(10,22,38,.25); } }
+th, td { border-bottom-color: var(--glass-edge); }
+.viewer { background:
+    radial-gradient(80% 90% at 20% 10%, rgba(168,218,220,.45), transparent 60%),
+    radial-gradient(70% 80% at 90% 90%, rgba(69,123,157,.22), transparent 60%),
+    linear-gradient(180deg, rgba(255,255,255,.35), rgba(255,255,255,.05));
+  border-color: var(--glass-edge); }
+:root[data-theme="dark"] .viewer { background: radial-gradient(80% 90% at 20% 10%, rgba(69,123,157,.35), transparent 60%), radial-gradient(70% 80% at 90% 90%, rgba(168,218,220,.10), transparent 60%), #0C1726; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .viewer { background: radial-gradient(80% 90% at 20% 10%, rgba(69,123,157,.35), transparent 60%), radial-gradient(70% 80% at 90% 90%, rgba(168,218,220,.10), transparent 60%), #0C1726; } }
+.letter, .pick { border-radius: 8px; border: 1px solid rgba(255,255,255,.55); box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 1px 4px rgba(29,53,87,.18); }
+.chip-st { background: var(--glass-strong); border-color: currentColor; }
+.verdict .badge { border-radius: 999px; box-shadow: inset 0 1px 0 rgba(255,255,255,.3); }
+.sample-tag { background: var(--glass-strong); }
+.meter { background: var(--field-glass); border-color: var(--glass-edge); }
+.rep-head { border-bottom-color: var(--glass-edge); }
+.rep-imgs, .rep-sub figure, .rep-body > div:first-child { background: #E9EDF1; }
+.rep-sub figcaption, .rep-cap { background: rgba(255,255,255,.55); }
+@media (prefers-reduced-transparency: reduce) {
+  section.panel, .verdict, .kpi, .rep, .info, .dims, .btn, .seg, select, input { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--surface); }
+}
+@media print {
+  :root:not(#p), :root[data-theme="dark"]:not(#p) { --bg-base: #FFFFFF; }
+  html, body { background: #FFFFFF !important; }
+  body::before { display: none; }
+  section.panel, .verdict, .kpi, .rep, .info, .dims, .btn, .seg, select, input, .table-scroll, thead th {
+    -webkit-backdrop-filter: none !important; backdrop-filter: none !important; box-shadow: none !important; background: #FFFFFF !important;
+  }
+  .verdict, .kpi, .rep { border: 1px solid #D6D3CA !important; }
+  thead th { background: #F6F5F2 !important; }
+  .kpis { gap: 8px; }
+}
 </style>
 </head>
 <body>
@@ -889,38 +980,51 @@ td select { font-size: 13px; padding: 6px 6px; }
   var viewerEl = $('viewer'), three = null, snap = null;
   function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888'; }
   var texCache = {};
+  // Textura del rótulo para el cristal. Sobre tintes claros se usa como map (letra oscura que multiplica el tinte);
+  // sobre tintes oscuros como emissiveMap (letra que brilla en blanco). El resto de la cara queda neutro.
   function textureFor(i, type) {
-    var key = i + '|' + type + '|' + colorOf(i) + '|' + state.labelMode;
+    var col = colorOf(i), light = isLight(col);
+    var key = i + '|' + type + '|' + col + '|' + state.labelMode;
     if (texCache[key]) return texCache[key];
     var cv = document.createElement('canvas'); cv.width = cv.height = 128;
-    var g = cv.getContext('2d'), col = colorOf(i);
-    g.fillStyle = col; g.fillRect(0, 0, 128, 128);
+    var g = cv.getContext('2d'), base = light ? '#FFFFFF' : '#000000', ink = light ? 'rgba(20,38,61,.78)' : 'rgba(255,255,255,.95)', faint = light ? 'rgba(20,38,61,.14)' : 'rgba(255,255,255,.22)';
+    g.fillStyle = base; g.fillRect(0, 0, 128, 128);
+    g.strokeStyle = faint; g.lineWidth = 3;
     if (type === 'crate') {
-      g.strokeStyle = 'rgba(60,40,20,.45)'; g.lineWidth = 5;
-      [26, 64, 102].forEach(function (y) { g.beginPath(); g.moveTo(0, y); g.lineTo(128, y); g.stroke(); });
-      g.beginPath(); g.moveTo(6, 6); g.lineTo(122, 122); g.stroke();
-    } else if (type === 'caja') {
-      g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(0, 56, 128, 16);
+      [26, 64, 102].forEach(function (y) { g.beginPath(); g.moveTo(4, y); g.lineTo(124, y); g.stroke(); });
+      g.beginPath(); g.moveTo(8, 8); g.lineTo(120, 120); g.stroke();
+    } else if (type === 'pallet') {
+      for (var k = -128; k < 128; k += 26) { g.beginPath(); g.moveTo(k, 128); g.lineTo(k + 128, 0); g.stroke(); }
     } else {
-      g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 3;
-      for (var k = -128; k < 128; k += 24) { g.beginPath(); g.moveTo(k, 128); g.lineTo(k + 128, 0); g.stroke(); }
+      g.beginPath(); g.moveTo(0, 64); g.lineTo(128, 64); g.stroke();
     }
-    g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 6; g.strokeRect(0, 0, 128, 128);
-    g.fillStyle = isLight(col) ? '#14263D' : '#FFFFFF';
-    g.font = '600 56px "DM Sans", Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    if (showLetter()) g.fillText(letterOf(i), 64, 68);
+    if (showLetter()) {
+      g.fillStyle = ink; g.font = '600 58px "DM Sans", Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(letterOf(i), 64, 68);
+    }
     var t = new THREE.CanvasTexture(cv); t.anisotropy = 4;
-    texCache[key] = t; return t;
+    texCache[key] = { tex: t, light: light }; return texCache[key];
   }
+  function glassMaterial(i, type, opacity) {
+    var tx = textureFor(i, type);
+    var m = new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color(colorOf(i)).lerp(new THREE.Color('#1D3557'), isLight(colorOf(i)) ? 0.38 : 0), transparent: true, opacity: opacity, roughness: 0.08, metalness: 0,
+      clearcoat: 0.7, clearcoatRoughness: 0.08, reflectivity: 0.25, envMapIntensity: 0.55, depthWrite: false
+    });
+    if (tx.light) m.map = tx.tex;
+    else { m.emissiveMap = tx.tex; m.emissive = new THREE.Color('#FFFFFF'); m.emissiveIntensity = 0.85; }
+    return m;
+  }
+
   function addLights(scene) {
     scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 0.8));
-    var dir = new THREE.DirectionalLight(0xffffff, 0.6); dir.position.set(6, 12, 8); scene.add(dir);
+    var dir = new THREE.DirectionalLight(0xffffff, 0.75); dir.position.set(6, 12, 8); scene.add(dir);
     var dir2 = new THREE.DirectionalLight(0xffffff, 0.25); dir2.position.set(-8, 5, -6); scene.add(dir2);
   }
   function initThree() {
     if (typeof THREE === 'undefined') { viewerEl.insertAdjacentHTML('beforeend', '<div class="webgl-off">No se pudo cargar el motor 3D. Revisa tu conexión y recarga la página.</div>'); return null; }
     var renderer;
-    try { renderer = new THREE.WebGLRenderer({ antialias: true }); }
+    try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); renderer.setClearColor(0x000000, 0); }
     catch (e) { viewerEl.insertAdjacentHTML('beforeend', '<div class="webgl-off">Tu navegador no tiene WebGL activo; los cálculos siguen disponibles.</div>'); return null; }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     viewerEl.insertBefore(renderer.domElement, viewerEl.firstChild);
@@ -938,7 +1042,7 @@ td select { font-size: 13px; padding: 6px 6px; }
     try {
       var sr = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
       sr.setPixelRatio(1); sr.setSize(960, 480, false);
-      var ss = new THREE.Scene(); addLights(ss); ss.background = new THREE.Color('#ECEAE4');
+      var ss = new THREE.Scene(); addLights(ss); ss.background = new THREE.Color('#E9EDF1');
       snap = { renderer: sr, scene: ss, camera: new THREE.PerspectiveCamera(40, 2, 0.05, 500) };
     } catch (e) { snap = null; }
     return t;
@@ -955,7 +1059,7 @@ td select { font-size: 13px; padding: 6px 6px; }
     g.add(edge);
     g.add(new THREE.Mesh(shellGeo, new THREE.MeshBasicMaterial({ color: '#457B9D', transparent: true, opacity: 0.06, depthWrite: false, side: THREE.BackSide })));
     var floorGeo = new THREE.PlaneGeometry(L, W); floorGeo.rotateX(-Math.PI / 2); floorGeo.translate(L / 2, 0.001, W / 2);
-    g.add(new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({ color: '#A39E92', roughness: 0.95 })));
+    g.add(new THREE.Mesh(floorGeo, new THREE.MeshPhysicalMaterial({ color: colors.floor || '#B8C3CD', roughness: 0.35, clearcoat: 0.6, transparent: true, opacity: 0.85 })));
     var gp = [];
     for (var gx = 1; gx < L; gx += 1) gp.push(gx, 0.003, 0, gx, 0.003, W);
     var grid = new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(gp, 3)), new THREE.LineBasicMaterial({ color: colors.grid, transparent: true, opacity: 0.8 }));
@@ -973,10 +1077,10 @@ td select { font-size: 13px; padding: 6px 6px; }
     }
     Object.keys(byLine).forEach(function (li) {
       var idxs = byLine[li], type = state.lines[li] ? state.lines[li].type : 'caja';
-      var mat = new THREE.MeshStandardMaterial({ map: textureFor(+li, type), roughness: 0.8 });
+      var mat = glassMaterial(+li, type, colors.glass || 0.64);
       if (type === 'pallet') {
         // Base de madera de la tarima (aprox. 15 cm, incluida en el alto capturado)
-        inst(new THREE.MeshStandardMaterial({ color: '#9C7A54', roughness: 0.9 }), idxs, function (b) {
+        inst(new THREE.MeshPhysicalMaterial({ color: '#A88660', roughness: 0.55, clearcoat: 0.4 }), idxs, function (b) {
           var hb = Math.min(15, b.dy * 0.3) * S;
           dummy.position.set((b.x + b.dx / 2) * S, b.y * S + hb / 2, (b.z + b.dz / 2) * S);
           dummy.scale.set(b.dx * S - gap, hb - gap / 2, b.dz * S - gap);
@@ -993,8 +1097,10 @@ td select { font-size: 13px; padding: 6px 6px; }
         });
       }
     });
-    var ep = new Float32Array(boxes.length * 72), o = 0;
+    var ep = new Float32Array(boxes.length * 72), ec = new Float32Array(boxes.length * 72), o = 0, oc = 0, cc = new THREE.Color();
     boxes.forEach(function (b) {
+      cc.set(colorOf(b.line));
+      for (var q = 0; q < 24; q++) { ec[oc++] = cc.r; ec[oc++] = cc.g; ec[oc++] = cc.b; }
       var x0 = b.x * S + gap / 2, y0 = b.y * S + gap / 2, z0 = b.z * S + gap / 2, x1 = x0 + b.dx * S - gap, y1 = y0 + b.dy * S - gap, z1 = z0 + b.dz * S - gap;
       var v = [[x0,y0,z0],[x1,y0,z0],[x1,y1,z0],[x0,y1,z0],[x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1]];
       [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]].forEach(function (e) {
@@ -1002,8 +1108,8 @@ td select { font-size: 13px; padding: 6px 6px; }
         ep[o++] = v[e[1]][0]; ep[o++] = v[e[1]][1]; ep[o++] = v[e[1]][2];
       });
     });
-    var eg = new THREE.BufferGeometry(); eg.setAttribute('position', new THREE.BufferAttribute(ep, 3));
-    var edges = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: '#14263D', transparent: true, opacity: 0.4 }));
+    var eg = new THREE.BufferGeometry(); eg.setAttribute('position', new THREE.BufferAttribute(ep, 3)); eg.setAttribute('color', new THREE.BufferAttribute(ec, 3));
+    var edges = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.5 }));
     g.add(edges);
     // Centro de gravedad: poste vertical sobre el piso
     if (cont.cg) {
@@ -1014,10 +1120,10 @@ td select { font-size: 13px; padding: 6px 6px; }
     }
     return { group: g, meshes: meshes, edges: edges, total: boxes.length, grid: grid, edge: edge, L: L, W: W, H: H };
   }
-  function themeColors() { return { edge: cssVar('--scene-edge'), grid: cssVar('--scene-grid') }; }
+  function themeColors() { return { edge: cssVar('--scene-edge'), grid: cssVar('--scene-grid'), floor: isLight(cssVar('--scene')) ? '#B8C3CD' : '#2E4A68' }; }
   function applyTheme() {
     if (!three) return;
-    three.scene.background = new THREE.Color(cssVar('--scene'));
+    three.scene.background = null;
     if (three.built) { var c = themeColors(); three.built.edge.material.color.set(c.edge); three.built.grid.material.color.set(c.grid); }
   }
   function build3D(resetCam) {
@@ -1110,7 +1216,7 @@ td select { font-size: 13px; padding: 6px 6px; }
   function scheduleReport() { clearTimeout(reportTimer); reportTimer = setTimeout(renderReport, 300); }
   function snapshot(ci) {
     if (!snap) return {};
-    var b = buildGroup(ci, { edge: '#1D3557', grid: '#CFCBC0' }), cam = snap.camera, out = {};
+    var b = buildGroup(ci, { edge: '#1D3557', grid: '#C9D2DA', glass: 0.74 }), cam = snap.camera, out = {};
     snap.scene.add(b.group);
     function shot(view, w, h) {
       snap.renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix();
@@ -1210,8 +1316,9 @@ td select { font-size: 13px; padding: 6px 6px; }
     setTimeout(function () { window.print(); }, 50);
   });
 
-  try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme); } catch (e) {}
-  new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  function themeChanged() { if (three && last) build3D(); }
+  try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', themeChanged); } catch (e) {}
+  new MutationObserver(themeChanged).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
   // ---------- Arranque ----------
   loadSample();
