@@ -352,6 +352,27 @@ th, td { border-bottom-color: var(--glass-edge); }
   thead th { background: #F6F5F2 !important; }
   .kpis { gap: 8px; }
 }
+
+/* ---- v5: visibilidad por línea y balance de peso ---- */
+.legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 10px; }
+.lg-item { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; padding: 10px 12px; border-radius: 14px; background: var(--glass-strong); border: 1px solid var(--glass-edge); min-width: 0; }
+.lg-item.off { opacity: .55; }
+.lg-item .check { padding-block: 0; min-width: 0; }
+.lg-item .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lg-item .op { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; }
+.lg-item .op input { flex: 1; min-width: 0; accent-color: var(--steel); }
+.lg-item .op output { font-family: var(--font-mono); font-size: 12px; min-width: 4ch; text-align: right; color: var(--ink); }
+.legend-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.legend-head .btn { padding: 5px 12px; font-size: 13px; }
+.balance { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: flex-end; padding: 12px 14px; border-radius: 16px; background: var(--glass-strong); border: 1px solid var(--glass-edge); }
+.cg-status { flex: 1 1 320px; min-width: 0; display: grid; gap: 4px; font-size: 13px; }
+.cg-status .row { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; }
+.cg-status b { font-family: var(--font-mono); font-weight: 500; color: var(--ink); }
+.cg-status .tip { color: var(--muted); }
+.split { display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: var(--field-glass); border: 1px solid var(--glass-edge); min-width: 140px; flex: 1 1 140px; }
+.split i { display: block; height: 100%; background: var(--slate); }
+.split i + i { background: var(--aqua); }
+@media print { .balance, .legend-head, .legend { display: none !important; } }
 </style>
 </head>
 <body>
@@ -525,6 +546,20 @@ th, td { border-bottom-color: var(--glass-edge); }
         <input type="range" id="seqRange" min="0" max="0" value="0">
         <output id="seqOut" for="seqRange"></output>
       </div>
+      <div class="balance" id="balance">
+        <label class="ctl"><span>Posición de la carga</span>
+          <select id="balanceMode">
+            <option value="front" selected>Desde la cabecera</option>
+            <option value="center">Centrada para balancear</option>
+          </select>
+        </label>
+        <label class="ctl"><span>Tolerancia del centro de gravedad ±%</span><input type="number" id="cgTol" min="1" max="25" step="0.5" value="5" style="width:90px"></label>
+        <div class="cg-status" id="cgStatus" aria-live="polite"></div>
+      </div>
+      <div class="legend-head">
+        <span class="lbl">Visibilidad por línea</span>
+        <button type="button" class="btn" id="showAll">Mostrar todas</button>
+      </div>
       <div class="legend" id="legend"></div>
     </div>
   </section>
@@ -609,7 +644,7 @@ th, td { border-bottom-color: var(--glass-edge); }
   ];
 
   // ---------- Estado ----------
-  var state = { units: 'metric', equip: '53FT', overrides: {}, airFactor: 6000, avail: 1, labelMode: 'both', lines: [], view: 0, isSample: true };
+  var state = { units: 'metric', equip: '53FT', overrides: {}, airFactor: 6000, avail: 1, labelMode: 'both', centered: false, tol: 5, vis: {}, lines: [], view: 0, isSample: true };
   var nextId = 1;
   function mkLine(o, pos) { return { id: nextId++, type: o.type || 'caja', desc: o.desc || '', l: o.l, w: o.w, h: o.h, qty: o.qty, wt: o.wt, stack: o.stack !== false, tilt: !!o.tilt, color: o.color || COLORS[pos % COLORS.length] }; }
   function loadSample() {
@@ -852,6 +887,7 @@ th, td { border-bottom-color: var(--glass-edge); }
     var totVolCm = 0, totKg = 0, totBoxes = 0;
     ns.forEach(function (n) { if (validLine(n)) { totVolCm += n.l * n.w * n.h * n.qty; totKg += n.wt * n.qty; totBoxes += n.qty; } });
     var res = pack(ns.map(function (n) { return Object.assign({}, n); }), C);
+    finishContainers(res, C);
     var nNeeded = res.containers.filter(function (c) { return c.boxes.length; }).length;
     if (state.view >= res.containers.length) state.view = 0;
 
@@ -871,11 +907,64 @@ th, td { border-bottom-color: var(--glass-edge); }
     renderVerdict();
     renderKpis();
     renderLegend();
+    renderCgStatus();
     renderRef();
     build3D(resetCam);
     scheduleReport();
   }
 
+  // Centro de gravedad, reparto delantero/trasero y, si se pide, carga centrada en el largo y el ancho.
+  function finishContainers(res, C) {
+    res.containers.forEach(function (c) {
+      var B = c.boxes;
+      if (!B.length) { c.freeLen = C.L; c.frontGap = 0; c.cg = null; c.front = 0; c.rear = 0; return; }
+      function stats() {
+        var sw = 0, sx = 0, sy = 0, sz = 0, minX = Infinity, maxX = 0, maxZ = 0;
+        B.forEach(function (b) {
+          sw += b.wt; sx += b.wt * (b.x + b.dx / 2); sy += b.wt * (b.y + b.dy / 2); sz += b.wt * (b.z + b.dz / 2);
+          minX = Math.min(minX, b.x); maxX = Math.max(maxX, b.x + b.dx); maxZ = Math.max(maxZ, b.z + b.dz);
+        });
+        return { sw: sw, cg: sw > 0 ? { x: sx / sw, y: sy / sw, z: sz / sw } : null, minX: minX, maxX: maxX, maxZ: maxZ };
+      }
+      var st = stats();
+      if (state.centered && st.cg) {
+        // Desplaza el bloque completo hacia el centro sin salir del equipo (requiere bloqueo o arriostre en la práctica).
+        var sx = Math.max(0, Math.min(C.L - st.maxX, C.L / 2 - st.cg.x));
+        var sz = Math.max(0, Math.min(C.W - st.maxZ, C.W / 2 - st.cg.z));
+        if (sx > 0 || sz > 0) { B.forEach(function (b) { b.x += sx; b.z += sz; }); st = stats(); }
+      }
+      c.cg = st.cg; c.frontGap = st.minX; c.freeLen = C.L - (st.maxX - st.minX);
+      var front = 0;
+      B.forEach(function (b) { if (b.x + b.dx / 2 < C.L / 2) front += b.wt; });
+      c.front = front; c.rear = st.sw - front;
+      if (c.cg) {
+        c.devL = (c.cg.x - C.L / 2) / C.L * 100; c.devW = (c.cg.z - C.W / 2) / C.W * 100;
+        c.cgOk = Math.abs(c.devL) <= state.tol && Math.abs(c.devW) <= state.tol;
+      }
+    });
+  }
+  function signed(n) { return (n > 0 ? '+' : n < 0 ? '−' : '') + fmt(Math.abs(n), 1); }
+  function cgSummary(c, C) {
+    if (!c || !c.cg) return null;
+    var tot = c.front + c.rear, fp = tot ? c.front / tot * 100 : 0;
+    var tip = '';
+    if (!c.cgOk) {
+      if (c.devL < -state.tol) tip = 'El peso se concentra hacia la cabecera. ' + (state.centered ? 'Ya está centrada: reduce o reparte los bultos pesados, o usa más de un equipo.' : 'Prueba “Centrada para balancear”, o reparte los bultos pesados a lo largo.');
+      else if (c.devL > state.tol) tip = 'El peso se concentra hacia las puertas. Carga primero los bultos más pesados o reparte la carga.';
+      else tip = 'El peso está cargado hacia un costado. ' + (state.centered ? 'Reacomoda los bultos pesados al centro del ancho.' : 'Prueba “Centrada para balancear”.');
+    }
+    return { fp: fp, tip: tip,
+      html: '<div class="row"><span class="chip-st ' + (c.cgOk ? 'ok' : 'part') + '">' + (c.cgOk ? 'Balanceado' : 'Revisar balance') + '</span>' +
+        '<span>Largo <b>' + fmt(c.cg.x / 100, 2) + ' m</b> (' + signed(c.devL) + '% del centro)</span>' +
+        '<span>Ancho <b>' + signed(c.devW) + '%</b></span><span>Altura <b>' + fmt(c.cg.y / 100, 2) + ' m</b></span></div>' +
+        '<div class="row"><span>Mitad delantera <b>' + fmt(fp, 0) + '%</b></span><div class="split" aria-hidden="true"><i style="width:' + fp.toFixed(1) + '%"></i><i style="width:' + (100 - fp).toFixed(1) + '%"></i></div><span>Mitad trasera <b>' + fmt(100 - fp, 0) + '%</b></span></div>' +
+        (c.frontGap > 1 ? '<div class="tip">Espacio libre en cabecera: ' + lenTxt(c.frontGap) + '. Requiere bloqueo o arriostre para que la carga no se desplace.</div>' : '') +
+        (tip ? '<div class="tip">' + tip + '</div>' : '') };
+  }
+  function renderCgStatus() {
+    var c = last.res.containers[state.view], sm = cgSummary(c, last.C);
+    $('cgStatus').innerHTML = sm ? sm.html : '<span class="hint">Sin carga en este equipo.</span>';
+  }
   function renderRowOutputs() {
     var rows = rowsEl.querySelectorAll('tr'), d = last;
     d.ns.forEach(function (n, i) {
@@ -938,10 +1027,40 @@ th, td { border-bottom-color: var(--glass-edge); }
     if (cont) cont.boxes.forEach(function (b) { counts[b.line] = (counts[b.line] || 0) + 1; });
     $('legend').innerHTML = last.ns.map(function (n, i) {
       if (!validLine(n)) return '';
-      return '<span>' + chip(i) + esc(lineName(i)) +
-        ' <span class="hint">' + fmt(counts[i] || 0, 0) + ' en este equipo</span></span>';
+      var v = visOf(i), id = state.lines[i].id, pct = Math.round(v.op * 100);
+      return '<div class="lg-item' + (v.hidden ? ' off' : '') + '" data-id="' + id + '">' +
+        '<label class="check"><input type="checkbox" id="vis-' + id + '" data-vis="show"' + (v.hidden ? '' : ' checked') + ' aria-label="Mostrar ' + esc(lineName(i)) + '"> ' + chip(i) + '</label>' +
+        '<span class="nm" title="' + esc(lineName(i)) + '">' + esc(lineName(i)) + ' <span class="hint">· ' + fmt(counts[i] || 0, 0) + ' aquí</span></span>' +
+        '<label class="op"><span class="lbl">Opacidad</span><input type="range" id="op-' + id + '" data-vis="op" min="10" max="100" step="5" value="' + pct + '" aria-label="Opacidad de ' + esc(lineName(i)) + '"><output>' + pct + '%</output></label>' +
+        '</div>';
     }).join('');
   }
+  var DEFAULT_OP = 0.64;
+  function visOf(i) { var ln = state.lines[i]; return (ln && state.vis[ln.id]) || { hidden: false, op: DEFAULT_OP }; }
+  function setVis(id, patch) {
+    var cur = state.vis[id] || { hidden: false, op: DEFAULT_OP };
+    state.vis[id] = { hidden: 'hidden' in patch ? patch.hidden : cur.hidden, op: 'op' in patch ? patch.op : cur.op };
+  }
+  // Aplica visibilidad y opacidad a la vista 3D sin reconstruir la escena.
+  function applyVis() {
+    if (!three || !three.built) return;
+    three.built.meshes.forEach(function (m) {
+      var v = visOf(m.userData.line), k = m.userData.kind;
+      m.visible = !v.hidden;
+      if (k === 'glass') { m.material.opacity = v.op; m.material.depthWrite = v.op >= 0.99; }
+      else if (k === 'base') { m.material.transparent = v.op < 0.95; m.material.opacity = Math.min(1, v.op + 0.25); }
+      else if (k === 'edge') { m.material.opacity = Math.min(0.9, 0.5 * v.op / DEFAULT_OP); }
+      m.material.needsUpdate = true;
+    });
+  }
+  $('legend').addEventListener('input', function (e) {
+    var item = e.target.closest('.lg-item'); if (!item) return;
+    var id = +item.dataset.id;
+    if (e.target.dataset.vis === 'op') { setVis(id, { op: num(e.target.value) / 100 }); e.target.nextElementSibling.textContent = e.target.value + '%'; }
+    if (e.target.dataset.vis === 'show') { setVis(id, { hidden: !e.target.checked }); item.classList.toggle('off', !e.target.checked); }
+    applyVis();
+  });
+  $('showAll').addEventListener('click', function () { state.vis = {}; renderLegend(); applyVis(); });
   function renderRef() {
     var f = state.units === 'metric';
     $('refRows').innerHTML = EQUIP.filter(function (e) { return e.key !== 'CUSTOM'; }).map(function (c) {
@@ -1070,10 +1189,26 @@ th, td { border-bottom-color: var(--glass-edge); }
     var cont = last.res.containers[ci] || { boxes: [] }, boxes = cont.boxes, byLine = {};
     boxes.forEach(function (b, k) { (byLine[b.line] = byLine[b.line] || []).push(k); });
     var unit = new THREE.BoxGeometry(1, 1, 1), dummy = new THREE.Object3D(), gap = 0.004, meshes = [];
-    function inst(mat, idxs, fn) {
+    function inst(mat, idxs, fn, li, kind) {
       var m = new THREE.InstancedMesh(unit, mat, idxs.length);
       idxs.forEach(function (k, j) { fn(boxes[k]); dummy.updateMatrix(); m.setMatrixAt(j, dummy.matrix); });
-      m.instanceMatrix.needsUpdate = true; m.userData = { ranks: idxs }; g.add(m); meshes.push(m);
+      m.instanceMatrix.needsUpdate = true; m.userData = { ranks: idxs, line: li, kind: kind }; g.add(m); meshes.push(m);
+    }
+    // Aristas de cada línea, en el mismo orden de carga que sus bultos
+    function edgesFor(idxs, li) {
+      var ep = new Float32Array(idxs.length * 72), o = 0;
+      idxs.forEach(function (k) {
+        var b = boxes[k];
+        var x0 = b.x * S + gap / 2, y0 = b.y * S + gap / 2, z0 = b.z * S + gap / 2, x1 = x0 + b.dx * S - gap, y1 = y0 + b.dy * S - gap, z1 = z0 + b.dz * S - gap;
+        var v = [[x0,y0,z0],[x1,y0,z0],[x1,y1,z0],[x0,y1,z0],[x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1]];
+        [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]].forEach(function (e) {
+          ep[o++] = v[e[0]][0]; ep[o++] = v[e[0]][1]; ep[o++] = v[e[0]][2];
+          ep[o++] = v[e[1]][0]; ep[o++] = v[e[1]][1]; ep[o++] = v[e[1]][2];
+        });
+      });
+      var eg = new THREE.BufferGeometry(); eg.setAttribute('position', new THREE.BufferAttribute(ep, 3));
+      var m = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: colorOf(li), transparent: true, opacity: 0.5 }));
+      m.userData = { ranks: idxs, line: li, kind: 'edge' }; g.add(m); meshes.push(m);
     }
     Object.keys(byLine).forEach(function (li) {
       var idxs = byLine[li], type = state.lines[li] ? state.lines[li].type : 'caja';
@@ -1084,41 +1219,31 @@ th, td { border-bottom-color: var(--glass-edge); }
           var hb = Math.min(15, b.dy * 0.3) * S;
           dummy.position.set((b.x + b.dx / 2) * S, b.y * S + hb / 2, (b.z + b.dz / 2) * S);
           dummy.scale.set(b.dx * S - gap, hb - gap / 2, b.dz * S - gap);
-        });
+        }, +li, 'base');
         inst(mat, idxs, function (b) {
           var hb = Math.min(15, b.dy * 0.3) * S, inset = Math.min(2, b.dx * 0.03) * S, hl = b.dy * S - hb;
           dummy.position.set((b.x + b.dx / 2) * S, b.y * S + hb + hl / 2, (b.z + b.dz / 2) * S);
           dummy.scale.set(b.dx * S - gap - 2 * inset, hl - gap, b.dz * S - gap - 2 * inset);
-        });
+        }, +li, 'glass');
       } else {
         inst(mat, idxs, function (b) {
           dummy.position.set((b.x + b.dx / 2) * S, (b.y + b.dy / 2) * S, (b.z + b.dz / 2) * S);
           dummy.scale.set(Math.max(0.001, b.dx * S - gap), Math.max(0.001, b.dy * S - gap), Math.max(0.001, b.dz * S - gap));
-        });
+        }, +li, 'glass');
       }
+      edgesFor(idxs, +li);
     });
-    var ep = new Float32Array(boxes.length * 72), ec = new Float32Array(boxes.length * 72), o = 0, oc = 0, cc = new THREE.Color();
-    boxes.forEach(function (b) {
-      cc.set(colorOf(b.line));
-      for (var q = 0; q < 24; q++) { ec[oc++] = cc.r; ec[oc++] = cc.g; ec[oc++] = cc.b; }
-      var x0 = b.x * S + gap / 2, y0 = b.y * S + gap / 2, z0 = b.z * S + gap / 2, x1 = x0 + b.dx * S - gap, y1 = y0 + b.dy * S - gap, z1 = z0 + b.dz * S - gap;
-      var v = [[x0,y0,z0],[x1,y0,z0],[x1,y1,z0],[x0,y1,z0],[x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1]];
-      [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]].forEach(function (e) {
-        ep[o++] = v[e[0]][0]; ep[o++] = v[e[0]][1]; ep[o++] = v[e[0]][2];
-        ep[o++] = v[e[1]][0]; ep[o++] = v[e[1]][1]; ep[o++] = v[e[1]][2];
-      });
-    });
-    var eg = new THREE.BufferGeometry(); eg.setAttribute('position', new THREE.BufferAttribute(ep, 3)); eg.setAttribute('color', new THREE.BufferAttribute(ec, 3));
-    var edges = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.5 }));
-    g.add(edges);
     // Centro de gravedad: poste vertical sobre el piso
     if (cont.cg) {
-      var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, H * 1.12, 10), new THREE.MeshBasicMaterial({ color: colors.edge }));
+      // Zona objetivo: centro del piso ± tolerancia
+      var zone = new THREE.Mesh(new THREE.PlaneGeometry(L * state.tol / 50, W * state.tol / 50), new THREE.MeshBasicMaterial({ color: cont.cgOk ? '#2F7D5B' : '#B26B00', transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide }));
+      zone.rotation.x = -Math.PI / 2; zone.position.set(L / 2, 0.008, W / 2); g.add(zone);
+      var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, H * 1.12, 10), new THREE.MeshBasicMaterial({ color: cont.cgOk ? colors.edge : '#B3383B' }));
       pole.position.set(cont.cg.x * S, H * 0.56, cont.cg.z * S); g.add(pole);
       var ring = new THREE.Mesh(new THREE.RingGeometry(0.12, 0.18, 32), new THREE.MeshBasicMaterial({ color: colors.edge, side: THREE.DoubleSide }));
       ring.rotation.x = -Math.PI / 2; ring.position.set(cont.cg.x * S, 0.006, cont.cg.z * S); g.add(ring);
     }
-    return { group: g, meshes: meshes, edges: edges, total: boxes.length, grid: grid, edge: edge, L: L, W: W, H: H };
+    return { group: g, meshes: meshes, total: boxes.length, grid: grid, edge: edge, L: L, W: W, H: H };
   }
   function themeColors() { return { edge: cssVar('--scene-edge'), grid: cssVar('--scene-grid'), floor: isLight(cssVar('--scene')) ? '#B8C3CD' : '#2E4A68' }; }
   function applyTheme() {
@@ -1133,6 +1258,7 @@ th, td { border-bottom-color: var(--glass-edge); }
     three.built = b; three.scene.add(b.group);
     var range = $('seqRange'); range.max = String(b.total); range.value = String(b.total);
     setSequence(b.total);
+    applyVis();
     renderOverlay();
     var nf = viewerEl.querySelector('.nofit'); if (nf) nf.remove();
     if (!b.total) viewerEl.insertAdjacentHTML('beforeend', '<div class="nofit">Agrega al menos una línea válida para ver el plano de carga.</div>');
@@ -1145,7 +1271,7 @@ th, td { border-bottom-color: var(--glass-edge); }
     var capVol = C.L * C.W * C.H, imp = state.units === 'imperial';
     var dimTxt = imp ? fmt(C.L / IN, 0) + ' × ' + fmt(C.W / IN, 0) + ' × ' + fmt(C.H / IN, 0) + ' in' : fmt(C.L, 1) + ' × ' + fmt(C.W, 1) + ' × ' + fmt(C.H, 1) + ' cm';
     var over = d.cbm * 1e6 > capVol * state.avail;
-    var cgTxt = c.cg ? fmt(c.cg.x / 100, 2) + ' m de la cabecera (' + fmt(c.cg.x / C.L * 100, 0) + '%)' : '—';
+    var cgTxt = c.cg ? fmt(c.cg.x / 100, 2) + ' m de la cabecera (' + signed(c.devL) + '% del centro) · ' + (c.cgOk ? 'balanceado' : 'revisar balance') : '—';
     $('overlay').innerHTML = '<div class="info"><div class="t">' + esc(C.name) + ' · ' + dimTxt + '</div>' +
       '<table><thead><tr><th></th><th>Peso</th><th>Volumen</th><th>Libres</th></tr></thead><tbody>' +
       '<tr><td>Capacidad</td><td>' + wtTxt(C.payload, 0) + '</td><td>' + fmt(capVol / 1e6, 2) + ' m³</td><td>' + lenTxt(C.L) + '</td></tr>' +
@@ -1158,9 +1284,8 @@ th, td { border-bottom-color: var(--glass-edge); }
     three.built.meshes.forEach(function (m) {
       var r = m.userData.ranks, lo = 0, hi = r.length;
       while (lo < hi) { var mid = (lo + hi) >> 1; if (r[mid] < n) lo = mid + 1; else hi = mid; }
-      m.count = lo;
+      if (m.userData.kind === 'edge') m.geometry.setDrawRange(0, lo * 24); else m.count = lo;
     });
-    three.built.edges.geometry.setDrawRange(0, n * 24);
     $('seqOut').textContent = fmt(n, 0) + ' de ' + fmt(three.built.total, 0) + ' bultos';
   }
   $('seqRange').addEventListener('input', function (e) { stopPlay(); setSequence(parseInt(e.target.value, 10)); });
@@ -1208,8 +1333,10 @@ th, td { border-bottom-color: var(--glass-edge); }
     })(start);
   }
   document.querySelectorAll('[data-view]').forEach(function (b) { b.addEventListener('click', function () { setView(b.dataset.view); }); });
-  $('prevC').addEventListener('click', function () { if (state.view > 0) { state.view--; stopPlay(); renderKpis(); renderLegend(); build3D(); } });
-  $('nextC').addEventListener('click', function () { if (last && state.view < last.res.containers.length - 1) { state.view++; stopPlay(); renderKpis(); renderLegend(); build3D(); } });
+  $('prevC').addEventListener('click', function () { if (state.view > 0) { state.view--; stopPlay(); renderKpis(); renderLegend(); renderCgStatus(); build3D(); } });
+  $('nextC').addEventListener('click', function () { if (last && state.view < last.res.containers.length - 1) { state.view++; stopPlay(); renderKpis(); renderLegend(); renderCgStatus(); build3D(); } });
+  $('balanceMode').addEventListener('change', function (e) { state.centered = e.target.value === 'center'; recompute(); });
+  $('cgTol').addEventListener('input', function (e) { var t = num(e.target.value); if (t > 0) { state.tol = t; recompute(); } });
 
   // ---------- Reporte por equipo ----------
   var reportTimer = null;
@@ -1270,7 +1397,9 @@ th, td { border-bottom-color: var(--glass-edge); }
         '<span>Volumen <b>' + fmt(c.vol / 1e6, 2) + ' m³</b> (' + fmt(c.vol / capVol * 100, 0) + '%)</span>' +
         '<span>Metros libres <b>' + lenTxt(c.freeLen) + '</b></span>' +
         '<span>Bultos <b>' + fmt(c.boxes.length, 0) + '</b></span>' +
-        (c.cg ? '<span>Centro de gravedad <b>' + fmt(c.cg.x / 100, 2) + ' m</b> (' + fmt(c.cg.x / C.L * 100, 0) + '% del largo)</span>' : '') +
+        (c.cg ? '<span>Centro de gravedad <b>' + fmt(c.cg.x / 100, 2) + ' m</b> de la cabecera (' + signed(c.devL) + '% largo, ' + signed(c.devW) + '% ancho, altura ' + fmt(c.cg.y / 100, 2) + ' m) · ' + (c.cgOk ? 'balanceado' : 'revisar balance') + '</span>' +
+          '<span>Delantera / trasera <b>' + fmt((c.front + c.rear) ? c.front / (c.front + c.rear) * 100 : 0, 0) + '% / ' + fmt((c.front + c.rear) ? c.rear / (c.front + c.rear) * 100 : 0, 0) + '%</b></span>' +
+          (c.frontGap > 1 ? '<span>Libre en cabecera <b>' + lenTxt(c.frontGap) + '</b> (requiere bloqueo)</span>' : '') : '') +
         '</div><div class="table-scroll"><table><thead><tr><th></th><th>Descripción</th><th class="num">Piezas</th><th class="num">L × A × H</th><th class="num">Peso total</th><th>Restricciones</th></tr></thead><tbody>' +
         rows + '</tbody></table></div></div></div></article>';
     }).join('');
