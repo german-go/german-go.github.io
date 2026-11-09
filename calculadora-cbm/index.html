@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Calculadora CBM Cardinal Point</title>
+<meta name="description" content="Calculadora de CBM, peso volumétrico y plan de carga 3D para contenedor, caja seca y unidades de reparto. Cardinal Point.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap">
+<style>
+/* Layout: banda de marca oscura -> carga (tabla) -> resultados -> visor 3D a todo el ancho -> supuestos */
+:root {
+  --slate: #1D3557;
+  --slate-deep: #14263D;
+  --slate-mid: #24405F;
+  --steel: #457B9D;
+  --aqua: #A8DADC;
+  --coral: #EB6366;
+
+  --bg: #F0EFEB;
+  --surface: #FFFFFF;
+  --surface-2: #F6F5F2;
+  --ink: #1D3557;
+  --ink-body: #273951;
+  --muted: #6E7F96;
+  --line: #E4E2DB;
+  --line-strong: #D6D3CA;
+  --field: #FFFFFF;
+  --focus: #457B9D;
+  --ok: #2F7D5B;
+  --warn: #B26B00;
+  --bad: #B3383B;
+  --scene: #E7E5DF;
+  --scene-grid: #CFCBC0;
+  --scene-edge: #1D3557;
+
+  --font-sans: 'DM Sans', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1B2B; --surface: #14263D; --surface-2: #1A2F4A; --ink: #F0EFEB; --ink-body: #D9DEE6;
+    --muted: #8FA3BC; --line: #24405F; --line-strong: #2E4E73; --field: #0F1F33; --focus: #A8DADC;
+    --ok: #6FC79E; --warn: #E8B05A; --bad: #F08A8C; --scene: #0C1726; --scene-grid: #23405F; --scene-edge: #A8DADC;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1B2B; --surface: #14263D; --surface-2: #1A2F4A; --ink: #F0EFEB; --ink-body: #D9DEE6;
+  --muted: #8FA3BC; --line: #24405F; --line-strong: #2E4E73; --field: #0F1F33; --focus: #A8DADC;
+  --ok: #6FC79E; --warn: #E8B05A; --bad: #F08A8C; --scene: #0C1726; --scene-grid: #23405F; --scene-edge: #A8DADC;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink-body); font-family: var(--font-sans); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* Banda de marca */
+.brand { background: linear-gradient(135deg, var(--slate-deep) 0%, var(--slate) 60%, var(--slate-mid) 100%); color: #F0EFEB; }
+.brand .wrap { padding-block: 26px 30px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 18px 32px; }
+.brand svg { width: 400px; max-width: 100%; height: auto; }
+.brand-title { display: grid; gap: 4px; min-width: 0; }
+.brand-title:first-child { flex: 0 1 400px; }
+.eyebrow { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--aqua); }
+.brand h1 { margin: 0; font-size: clamp(26px, 4vw, 36px); font-weight: 500; letter-spacing: -.01em; color: #FFFFFF; text-wrap: balance; }
+.brand p { margin: 0; color: #B9C8DA; max-width: 60ch; font-size: 14.5px; }
+
+main.wrap { padding-block: 26px 48px; display: grid; gap: 22px; }
+section.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; margin-bottom: 14px; }
+h2 { margin: 0; font-size: 18px; font-weight: 600; color: var(--ink); text-wrap: balance; }
+.hint { color: var(--muted); font-size: 13px; }
+
+/* Controles */
+.controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: flex-end; margin-bottom: 16px; }
+.ctl { display: grid; gap: 5px; }
+.ctl > span, .lbl { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 7px; overflow: hidden; background: var(--field); }
+.seg button { font: inherit; font-size: 13.5px; border: 0; background: transparent; color: var(--ink-body); padding: 7px 12px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line-strong); }
+.seg button[aria-pressed="true"] { background: var(--slate); color: #FFFFFF; }
+:root[data-theme="dark"] .seg button[aria-pressed="true"] { background: var(--aqua); color: var(--slate-deep); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .seg button[aria-pressed="true"] { background: var(--aqua); color: var(--slate-deep); } }
+select, input[type="number"], input[type="text"] {
+  font: inherit; font-size: 14px; color: var(--ink-body); background: var(--field);
+  border: 1px solid var(--line-strong); border-radius: 6px; padding: 7px 9px; min-width: 0;
+}
+input[type="number"] { font-family: var(--font-mono); font-size: 13.5px; text-align: right; font-variant-numeric: tabular-nums; }
+select:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.check { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; padding-block: 7px; }
+.check input { width: 16px; height: 16px; accent-color: var(--steel); }
+.custom-dims { display: none; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+.custom-dims.on { display: flex; }
+.custom-dims input { width: 92px; }
+
+/* Tabla de carga */
+.table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; min-width: 880px; }
+th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+thead th { background: var(--surface-2); font-family: var(--font-mono); font-weight: 400; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+tbody tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; }
+td input[type="number"] { width: 86px; }
+td input.qty { width: 74px; }
+td input[type="text"] { width: 100%; min-width: 150px; }
+.sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: middle; border: 1px solid rgba(0,0,0,.15); }
+.cbm-cell { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink); }
+.row-warn td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
+.del { font: inherit; border: 0; background: transparent; color: var(--muted); cursor: pointer; padding: 4px 8px; border-radius: 5px; font-size: 18px; line-height: 1; }
+.del:hover { color: var(--bad); background: var(--surface-2); }
+.table-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; align-items: center; }
+.btn { font: inherit; font-size: 14px; border-radius: 7px; padding: 8px 14px; cursor: pointer; border: 1px solid var(--line-strong); background: var(--field); color: var(--ink); }
+.btn:hover { border-color: var(--steel); }
+.btn.primary { background: var(--slate); border-color: var(--slate); color: #FFFFFF; }
+.btn.primary:hover { background: var(--slate-mid); }
+.sample-tag { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--warn); border: 1px solid currentColor; border-radius: 99px; padding: 2px 9px; }
+.msg { margin-top: 10px; font-size: 13.5px; color: var(--bad); }
+.msg:empty { display: none; }
+
+/* KPIs */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.kpi { background: var(--surface); padding: 16px 18px; display: grid; gap: 4px; align-content: start; min-width: 0; }
+.kpi .v { font-family: var(--font-mono); font-size: 26px; line-height: 1.15; color: var(--ink); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.kpi .v small { font-size: 14px; color: var(--muted); margin-left: 4px; }
+.kpi .v.accent { color: var(--coral); }
+.kpi .s { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.meter { height: 6px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; margin-top: 6px; }
+.meter i { display: block; height: 100%; background: var(--steel); border-radius: 99px; transition: width .3s; }
+.meter i.hi { background: var(--warn); }
+.meter i.over { background: var(--bad); }
+
+/* Visor 3D */
+.viewer-panel { padding: 0; overflow: hidden; }
+.viewer-head { padding: 18px 20px 12px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px 20px; }
+.viewer { position: relative; height: min(68vh, 600px); min-height: 360px; background: var(--scene); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.viewer canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.viewer canvas:active { cursor: grabbing; }
+.overlay { position: absolute; left: 12px; top: 12px; display: grid; gap: 6px; pointer-events: none; }
+.chip { pointer-events: auto; background: color-mix(in srgb, var(--surface) 88%, transparent); border: 1px solid var(--line); border-radius: 7px; padding: 6px 10px; font-size: 12.5px; color: var(--ink-body); backdrop-filter: blur(6px); }
+.chip b { font-family: var(--font-mono); font-weight: 500; color: var(--ink); }
+.pager { display: inline-flex; align-items: center; gap: 8px; }
+.pager .btn { padding: 6px 11px; }
+.pager span { font-family: var(--font-mono); font-size: 13px; color: var(--ink); min-width: 9ch; text-align: center; }
+.viewer-foot { padding: 14px 20px 18px; display: grid; gap: 14px; }
+.seq { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.seq input[type="range"] { flex: 1 1 260px; accent-color: var(--steel); min-width: 0; }
+.seq output { font-family: var(--font-mono); font-size: 13px; color: var(--ink); min-width: 15ch; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.nofit { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--muted); font-size: 14px; }
+.webgl-off { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
+
+/* Supuestos */
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px 28px; font-size: 13.5px; }
+.notes h3 { margin: 0 0 6px; font-size: 14px; font-weight: 600; color: var(--ink); }
+.notes p, .notes ul { margin: 0; color: var(--ink-body); max-width: 65ch; }
+.notes ul { padding-left: 18px; display: grid; gap: 4px; }
+.notes code { font-family: var(--font-mono); font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+.ref-table { width: 100%; min-width: 0; font-size: 13px; }
+.ref-table th, .ref-table td { padding: 5px 6px; }
+  .ref-table td.num { white-space: nowrap; }
+.ref-table td { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+footer.wrap { padding-block: 0 32px; color: var(--muted); font-size: 12.5px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+
+@media (max-width: 560px) {
+  .kpi .v { font-size: 22px; }
+  .brand svg { width: 300px; }
+}
+@media (prefers-reduced-motion: reduce) { .meter i { transition: none; } }
+/* ---- v2: veredicto, equipos, reporte de carga ---- */
+.dims { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; padding: 12px 14px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; }
+.dims input { width: 96px; }
+.dims .hint { flex: 1 1 220px; min-width: 0; }
+.letter { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 4px; font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: #FFFFFF; border: 1px solid rgba(0,0,0,.18); }
+.letter.light { color: var(--slate-deep); }
+td select { font-size: 13px; padding: 6px 6px; }
+.chip-st { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 12.5px; white-space: nowrap; padding: 2px 8px; border-radius: 99px; border: 1px solid currentColor; }
+.chip-st.ok { color: var(--ok); }
+.chip-st.part { color: var(--warn); }
+.chip-st.no { color: var(--bad); }
+.verdict { display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; align-items: center; padding: 16px 20px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); }
+.verdict .badge { font-family: var(--font-mono); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; padding: 8px 14px; border-radius: 6px; color: #FFFFFF; background: var(--ok); }
+.verdict.bad .badge { background: var(--bad); }
+:root[data-theme="dark"] .verdict .badge { color: var(--slate-deep); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .verdict .badge { color: var(--slate-deep); } }
+.verdict .vt { font-size: 17px; font-weight: 600; color: var(--ink); text-wrap: balance; }
+.verdict .vs { grid-column: 2; color: var(--ink-body); font-size: 14px; }
+@media (max-width: 560px) { .verdict { grid-template-columns: 1fr; } .verdict .vs { grid-column: 1; } }
+.info { pointer-events: auto; background: color-mix(in srgb, var(--surface) 92%, transparent); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 12.5px; color: var(--ink-body); backdrop-filter: blur(6px); max-width: min(380px, calc(100vw - 72px)); }
+.info .t { font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+.info table { min-width: 0; width: 100%; border-collapse: collapse; }
+.info th, .info td { padding: 2px 6px; border: 0; font-size: 12px; }
+.info th { font-family: var(--font-mono); font-weight: 400; color: var(--muted); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; background: none; }
+.info td { font-family: var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; }
+.info td:first-child { text-align: left; font-family: var(--font-sans); color: var(--muted); }
+.info .over { color: var(--bad); }
+.report { display: grid; gap: 18px; }
+.rep { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.rep-head { padding: 14px 18px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 20px; border-bottom: 1px solid var(--line); }
+.rep-head h3 { margin: 0; font-size: 15.5px; font-weight: 600; color: var(--ink); }
+.rep-head .meta { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.rep-body { display: grid; grid-template-columns: 1fr; }
+.rep-body > div { min-width: 0; }
+.rep-body img { display: block; width: 100%; max-width: 960px; height: auto; margin: 0 auto; }
+.rep-body > div:first-child { background: #ECEAE4; }
+.rep-stats { display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 12px 18px 0; font-size: 13px; }
+.rep-stats b { font-family: var(--font-mono); font-weight: 500; color: var(--ink); }
+.rep .table-scroll { border: 0; border-radius: 0; margin: 10px 0 0; }
+.rep table { min-width: 560px; font-size: 13px; }
+.rep td.n { font-family: var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rep.extra { border-color: var(--bad); }
+.tag { display: inline-block; font-size: 11.5px; padding: 1px 7px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--line); margin-right: 4px; white-space: nowrap; }
+/* ---- v3: identificación por color/letra, impresión ---- */
+.pick { position: relative; display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 6px; border: 1px solid rgba(0,0,0,.2); cursor: pointer; font-family: var(--font-mono); font-size: 12.5px; font-weight: 500; color: #FFFFFF; }
+.pick.light { color: var(--slate-deep); }
+.pick input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
+.pick:focus-within { outline: 2px solid var(--focus); outline-offset: 1px; }
+.report-fields { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; margin-bottom: 14px; }
+.report-fields input { width: 220px; max-width: 100%; }
+.report-fields .ctl { min-width: 0; max-width: 100%; grid-template-columns: minmax(0, 1fr); }
+.report-fields .ctl.wide input { width: 360px; }
+.rep-imgs { background: #ECEAE4; }
+.rep-sub { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border-top: 1px solid var(--line); }
+.rep-sub figure { margin: 0; background: #ECEAE4; min-width: 0; }
+.rep-sub img { display: block; width: 100%; height: auto; }
+.rep-sub figcaption, .rep-cap { font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #6E7F96; padding: 6px 10px; background: #F6F5F2; }
+@media (max-width: 640px) { .rep-sub { grid-template-columns: 1fr; } }
+.print-only { display: none; }
+@media print {
+  @page { size: letter; margin: 11mm; }
+  :root:not(#p), :root[data-theme="dark"]:not(#p) {
+    --bg: #FFFFFF; --surface: #FFFFFF; --surface-2: #F6F5F2; --ink: #1D3557; --ink-body: #273951; --muted: #6E7F96;
+    --line: #E4E2DB; --line-strong: #D6D3CA; --field: #FFFFFF; --ok: #2F7D5B; --warn: #B26B00; --bad: #B3383B; color-scheme: light;
+  }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { background: #FFFFFF; font-size: 10.5pt; }
+  .no-print, .brand, footer.wrap, .viewer-panel, .meter { display: none !important; }
+  .print-only { display: block; }
+  main.wrap { padding: 0; max-width: none; gap: 12px; }
+  section.panel { border: 0; padding: 0; background: none; }
+  .verdict { padding: 10px 14px; break-inside: avoid; }
+  .verdict .badge { color: #FFFFFF !important; }
+  .kpis { grid-template-columns: repeat(3, 1fr); break-inside: avoid; }
+  .kpi { padding: 10px 12px; }
+  .kpi .v { font-size: 18pt; }
+  .print-head { display: flex !important; justify-content: space-between; align-items: flex-end; gap: 20px; padding-bottom: 10px; border-bottom: 2px solid #1D3557; }
+  .ph-logo { width: 300px; height: auto; }
+  .rep { break-inside: avoid; page-break-inside: avoid; border-color: #D6D3CA; }
+  .rep + .rep { break-before: page; page-break-before: always; }
+  .rep table, .ps table { min-width: 0; font-size: 9pt; }
+  .table-scroll { overflow: visible; }
+  #h-rep { break-before: page; page-break-before: always; margin-bottom: 8px; }
+}
+.ph-meta { text-align: right; font-size: 10pt; color: #273951; }
+.ph-meta .ph-title { font-size: 18pt; font-weight: 600; color: #1D3557; }
+.ps h2 { margin: 6px 0 8px; }
+.ps table { font-size: 12.5px; }
+.ps td.n { font-family: var(--font-mono); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.print-foot { font-size: 8.5pt; color: #6E7F96; border-top: 1px solid #D6D3CA; padding-top: 6px; margin-top: 10px; }
+
+/* ---- v4: interfaz de vidrio (estilo Apple) con la paleta de Cardinal Point ---- */
+:root {
+  --glass: rgba(255,255,255,.58); --glass-strong: rgba(255,255,255,.74); --glass-border: rgba(255,255,255,.75);
+  --glass-edge: rgba(29,53,87,.10); --glass-shadow: 0 10px 40px rgba(29,53,87,.10), 0 1px 2px rgba(29,53,87,.06);
+  --glass-hi: inset 0 1px 0 rgba(255,255,255,.85); --field-glass: rgba(255,255,255,.62); --seg-on: #FFFFFF; --seg-on-ink: #1D3557;
+  --bg-a: rgba(168,218,220,.55); --bg-b: rgba(69,123,157,.28); --bg-c: rgba(214,211,202,.55); --bg-base: #EEF2F5;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --glass: rgba(26,47,74,.48); --glass-strong: rgba(26,47,74,.66); --glass-border: rgba(168,218,220,.16);
+  --glass-edge: rgba(168,218,220,.12); --glass-shadow: 0 12px 44px rgba(0,0,0,.35); --glass-hi: inset 0 1px 0 rgba(255,255,255,.08);
+  --field-glass: rgba(10,22,38,.45); --seg-on: rgba(255,255,255,.16); --seg-on-ink: #FFFFFF;
+  --bg-a: rgba(69,123,157,.38); --bg-b: rgba(168,218,220,.14); --bg-c: rgba(36,64,95,.65); --bg-base: #0B1626;
+} }
+:root[data-theme="dark"] {
+  --glass: rgba(26,47,74,.48); --glass-strong: rgba(26,47,74,.66); --glass-border: rgba(168,218,220,.16);
+  --glass-edge: rgba(168,218,220,.12); --glass-shadow: 0 12px 44px rgba(0,0,0,.35); --glass-hi: inset 0 1px 0 rgba(255,255,255,.08);
+  --field-glass: rgba(10,22,38,.45); --seg-on: rgba(255,255,255,.16); --seg-on-ink: #FFFFFF;
+  --bg-a: rgba(69,123,157,.38); --bg-b: rgba(168,218,220,.14); --bg-c: rgba(36,64,95,.65); --bg-base: #0B1626;
+}
+body { background: var(--bg-base); position: relative; isolation: isolate; }
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(60vw 50vh at 8% 12%, var(--bg-a), transparent 70%),
+    radial-gradient(50vw 60vh at 92% 30%, var(--bg-b), transparent 70%),
+    radial-gradient(70vw 50vh at 40% 100%, var(--bg-c), transparent 70%),
+    var(--bg-base);
+}
+.glassy, section.panel, .verdict, .kpi, .rep, .info, .dims {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(24px) saturate(170%); backdrop-filter: blur(24px) saturate(170%);
+  border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow), var(--glass-hi);
+}
+section.panel { border-radius: 24px; }
+.viewer-panel { overflow: hidden; }
+.kpis { background: none; border: 0; gap: 12px; overflow: visible; border-radius: 0; }
+.kpi { border-radius: 18px; }
+.verdict { border-radius: 20px; }
+.rep { border-radius: 20px; }
+.dims { border-radius: 16px; background: var(--glass-strong); }
+.info { border-radius: 16px; background: var(--glass-strong); }
+.brand { background: linear-gradient(135deg, rgba(20,38,61,.96) 0%, rgba(29,53,87,.94) 55%, rgba(36,64,95,.92) 100%); box-shadow: 0 10px 40px rgba(20,38,61,.25); position: relative; }
+.brand::after { content: ""; position: absolute; inset: auto 0 0 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(168,218,220,.5), transparent); }
+select, input[type="number"], input[type="text"] {
+  background: var(--field-glass); border: 1px solid var(--glass-edge); border-radius: 10px;
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: inset 0 1px 2px rgba(29,53,87,.06);
+}
+.btn { border-radius: 999px; background: var(--glass-strong); border: 1px solid var(--glass-border); box-shadow: 0 2px 10px rgba(29,53,87,.08), var(--glass-hi); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); padding: 8px 16px; }
+.btn:hover { border-color: var(--glass-border); filter: brightness(1.03); }
+.btn.primary { background: linear-gradient(180deg, #2A4A73 0%, #1D3557 100%); border-color: rgba(255,255,255,.18); color: #FFFFFF; box-shadow: 0 6px 18px rgba(29,53,87,.28), inset 0 1px 0 rgba(255,255,255,.22); }
+.btn.primary:hover { background: linear-gradient(180deg, #31557F 0%, #24405F 100%); }
+.seg { border-radius: 999px; padding: 3px; gap: 2px; background: var(--field-glass); border: 1px solid var(--glass-edge); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.seg button { border-radius: 999px; padding: 6px 14px; }
+.seg button + button { border-left: 0; }
+.seg button[aria-pressed="true"], :root[data-theme="dark"] .seg button[aria-pressed="true"] { background: var(--seg-on); color: var(--seg-on-ink); box-shadow: 0 2px 8px rgba(29,53,87,.14), var(--glass-hi); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .seg button[aria-pressed="true"] { background: var(--seg-on); color: var(--seg-on-ink); } }
+.table-scroll { border-radius: 16px; border-color: var(--glass-edge); background: rgba(255,255,255,.18); }
+thead th { background: rgba(255,255,255,.22); }
+:root[data-theme="dark"] .table-scroll, :root[data-theme="dark"] thead th { background: rgba(10,22,38,.25); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .table-scroll, :root:not([data-theme="light"]) thead th { background: rgba(10,22,38,.25); } }
+th, td { border-bottom-color: var(--glass-edge); }
+.viewer { background:
+    radial-gradient(80% 90% at 20% 10%, rgba(168,218,220,.45), transparent 60%),
+    radial-gradient(70% 80% at 90% 90%, rgba(69,123,157,.22), transparent 60%),
+    linear-gradient(180deg, rgba(255,255,255,.35), rgba(255,255,255,.05));
+  border-color: var(--glass-edge); }
+:root[data-theme="dark"] .viewer { background: radial-gradient(80% 90% at 20% 10%, rgba(69,123,157,.35), transparent 60%), radial-gradient(70% 80% at 90% 90%, rgba(168,218,220,.10), transparent 60%), #0C1726; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .viewer { background: radial-gradient(80% 90% at 20% 10%, rgba(69,123,157,.35), transparent 60%), radial-gradient(70% 80% at 90% 90%, rgba(168,218,220,.10), transparent 60%), #0C1726; } }
+.letter, .pick { border-radius: 8px; border: 1px solid rgba(255,255,255,.55); box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 1px 4px rgba(29,53,87,.18); }
+.chip-st { background: var(--glass-strong); border-color: currentColor; }
+.verdict .badge { border-radius: 999px; box-shadow: inset 0 1px 0 rgba(255,255,255,.3); }
+.sample-tag { background: var(--glass-strong); }
+.meter { background: var(--field-glass); border-color: var(--glass-edge); }
+.rep-head { border-bottom-color: var(--glass-edge); }
+.rep-imgs, .rep-sub figure, .rep-body > div:first-child { background: #E9EDF1; }
+.rep-sub figcaption, .rep-cap { background: rgba(255,255,255,.55); }
+@media (prefers-reduced-transparency: reduce) {
+  section.panel, .verdict, .kpi, .rep, .info, .dims, .btn, .seg, select, input { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--surface); }
+}
+@media print {
+  :root:not(#p), :root[data-theme="dark"]:not(#p) { --bg-base: #FFFFFF; }
+  html, body { background: #FFFFFF !important; }
+  body::before { display: none; }
+  section.panel, .verdict, .kpi, .rep, .info, .dims, .btn, .seg, select, input, .table-scroll, thead th {
+    -webkit-backdrop-filter: none !important; backdrop-filter: none !important; box-shadow: none !important; background: #FFFFFF !important;
+  }
+  .verdict, .kpi, .rep { border: 1px solid #D6D3CA !important; }
+  thead th { background: #F6F5F2 !important; }
+  .kpis { gap: 8px; }
+}
+
+/* ---- v5: visibilidad por línea y balance de peso ---- */
+.legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 10px; }
+.lg-item { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; padding: 10px 12px; border-radius: 14px; background: var(--glass-strong); border: 1px solid var(--glass-edge); min-width: 0; }
+.lg-item.off { opacity: .55; }
+.lg-item .check { padding-block: 0; min-width: 0; }
+.lg-item .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lg-item .op { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; }
+.lg-item .op input { flex: 1; min-width: 0; accent-color: var(--steel); }
+.lg-item .op output { font-family: var(--font-mono); font-size: 12px; min-width: 4ch; text-align: right; color: var(--ink); }
+.legend-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.legend-head .btn { padding: 5px 12px; font-size: 13px; }
+.balance { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: flex-end; padding: 12px 14px; border-radius: 16px; background: var(--glass-strong); border: 1px solid var(--glass-edge); }
+.cg-status { flex: 1 1 320px; min-width: 0; display: grid; gap: 4px; font-size: 13px; }
+.cg-status .row { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; }
+.cg-status b { font-family: var(--font-mono); font-weight: 500; color: var(--ink); }
+.cg-status .tip { color: var(--muted); }
+.split { display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: var(--field-glass); border: 1px solid var(--glass-edge); min-width: 140px; flex: 1 1 140px; }
+.split i { display: block; height: 100%; background: var(--slate); }
+.split i + i { background: var(--aqua); }
+@media print { .balance, .legend-head, .legend { display: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="brand no-print">
+  <div class="wrap">
+    <div class="brand-title">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 140" role="img" aria-label="Cardinal Point">
+        <g transform="translate(70, 70) scale(0.85)">
+          <polygon points="0,-56 -14,-14 0,-20 14,-14" fill="#FFFFFF"></polygon>
+          <polygon points="0,56 -14,14 0,20 14,14" fill="#FFFFFF" fill-opacity="0.35"></polygon>
+          <polygon points="-56,0 -14,-14 -20,0 -14,14" fill="#FFFFFF" fill-opacity="0.35"></polygon>
+          <polygon points="56,0 14,-14 20,0 14,14" fill="#EB6366"></polygon>
+          <circle cx="0" cy="0" r="4.5" fill="#FFFFFF"></circle>
+          <circle cx="0" cy="0" r="11" fill="none" stroke="#FFFFFF" stroke-width="0.5" stroke-opacity="0.2"></circle>
+        </g>
+        <text x="150" y="84" font-family="DM Sans, Inter, Helvetica, Arial, sans-serif" font-size="38" font-weight="500" letter-spacing="5" fill="#FFFFFF">CARDINAL POINT</text>
+        <circle cx="540" cy="78" r="6" fill="#EB6366"></circle>
+      </svg>
+    </div>
+    <div class="brand-title">
+      <span class="eyebrow">Cubicaje y plan de carga</span>
+      <h1>Calculadora CBM</h1>
+      <p>Revisa si tu carga cabe en contenedor, caja seca o unidad de reparto, con plano de carga 3D y reporte por equipo.</p>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="print-only print-head">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 140" role="img" aria-label="Cardinal Point" class="ph-logo">
+<g transform="translate(70, 70) scale(0.85)">
+<polygon points="0,-56 -14,-14 0,-20 14,-14" fill="#1D3557"></polygon>
+<polygon points="0,56 -14,14 0,20 14,14" fill="#1D3557" fill-opacity="0.35"></polygon>
+<polygon points="-56,0 -14,-14 -20,0 -14,14" fill="#1D3557" fill-opacity="0.35"></polygon>
+<polygon points="56,0 14,-14 20,0 14,14" fill="#EB6366"></polygon>
+<circle cx="0" cy="0" r="4.5" fill="#1D3557"></circle>
+<circle cx="0" cy="0" r="11" fill="none" stroke="#1D3557" stroke-width="0.5" stroke-opacity="0.2"></circle>
+</g>
+<text x="150" y="84" font-family="DM Sans, Inter, Helvetica, Arial, sans-serif" font-size="38" font-weight="500" letter-spacing="5" fill="#1D3557">CARDINAL POINT</text>
+<circle cx="540" cy="78" r="6" fill="#EB6366"></circle>
+</svg>
+    <div class="ph-meta"><div class="ph-title">Plan de carga</div><div id="phInfo"></div></div>
+  </div>
+  <section class="panel no-print" aria-labelledby="h-carga">
+    <div class="panel-head">
+      <h2 id="h-carga">Carga y equipo</h2>
+      <span class="sample-tag" id="sampleTag">Datos de ejemplo</span>
+    </div>
+
+    <div class="report-fields">
+      <label class="ctl"><span>Cliente</span><input type="text" id="r-client" placeholder="Nombre del cliente"></label>
+      <label class="ctl"><span>Referencia / cotización</span><input type="text" id="r-ref" placeholder="Ej. COT-2026-0142"></label>
+      <label class="ctl wide"><span>Notas para el reporte</span><input type="text" id="r-notes" placeholder="Origen, destino, condiciones de carga…"></label>
+    </div>
+
+    <div class="controls">
+      <div class="ctl">
+        <span id="lbl-units">Unidades</span>
+        <div class="seg" role="group" aria-labelledby="lbl-units">
+          <button type="button" id="u-metric" aria-pressed="true">cm · kg</button>
+          <button type="button" id="u-imperial" aria-pressed="false">in · lb</button>
+        </div>
+      </div>
+      <label class="ctl">
+        <span>Equipo</span>
+        <select id="container"></select>
+      </label>
+      <label class="ctl">
+        <span>Equipos disponibles</span>
+        <input type="number" id="avail" min="1" step="1" value="1" style="width:90px">
+      </label>
+      <label class="ctl">
+        <span>Factor aéreo</span>
+        <select id="airFactor">
+          <option value="6000" selected>1:6000 (IATA, 167 kg/m³)</option>
+          <option value="5000">1:5000 (courier, 200 kg/m³)</option>
+        </select>
+      </label>
+      <label class="ctl">
+        <span>Identificar líneas por</span>
+        <select id="labelMode">
+          <option value="both" selected>Letra y color</option>
+          <option value="color">Solo color</option>
+          <option value="letter">Solo letra</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="dims" id="dims">
+      <label class="ctl"><span>Largo int. <em class="u-len">cm</em></span><input type="number" id="c-l" min="1" step="any"></label>
+      <label class="ctl"><span>Ancho int. <em class="u-len">cm</em></span><input type="number" id="c-w" min="1" step="any"></label>
+      <label class="ctl"><span>Alto int. <em class="u-len">cm</em></span><input type="number" id="c-h" min="1" step="any"></label>
+      <label class="ctl"><span>Carga útil <em class="u-wt">kg</em></span><input type="number" id="c-p" min="1" step="any"></label>
+      <button type="button" class="btn" id="resetDims">Restablecer medidas</button>
+      <span class="hint" id="dimsHint"></span>
+    </div>
+
+    <div class="table-scroll" style="margin-top:14px">
+      <table aria-describedby="h-carga" style="min-width:1120px">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Tipo</th>
+            <th>Descripción</th>
+            <th class="num">Largo <span class="u-len">cm</span></th>
+            <th class="num">Ancho <span class="u-len">cm</span></th>
+            <th class="num">Alto <span class="u-len">cm</span></th>
+            <th class="num">Cantidad</th>
+            <th class="num">Peso c/u <span class="u-wt">kg</span></th>
+            <th>Apilable</th>
+            <th>Voltear</th>
+            <th class="num">Volumen</th>
+            <th class="num">Peso</th>
+            <th>Cargado</th>
+            <th><span style="position:absolute;left:-9999px">Eliminar</span></th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="table-actions">
+      <button type="button" class="btn primary" id="addRow">Agregar línea</button>
+      <button type="button" class="btn" id="clearAll">Vaciar tabla</button>
+      <button type="button" class="btn" id="loadSample">Cargar ejemplo</button>
+      <button type="button" class="btn" id="copySummary">Copiar resumen</button>
+      <span class="hint" id="copyMsg" aria-live="polite"></span>
+    </div>
+    <div class="msg" id="msg" role="status"></div>
+  </section>
+
+  <section aria-labelledby="h-res" style="display:grid;gap:12px">
+    <p class="print-only" id="phNotes" style="margin:0"></p>
+    <h2 id="h-res">Resultado</h2>
+    <div class="verdict" id="verdict" aria-live="polite"></div>
+    <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section class="print-only ps" aria-label="Detalle de la carga">
+    <h2>Detalle de la carga</h2>
+    <div class="table-scroll" id="printSummary"></div>
+  </section>
+
+  <section class="panel viewer-panel" aria-labelledby="h-3d">
+    <div class="viewer-head">
+      <div>
+        <h2 id="h-3d">Plano de carga 3D</h2>
+        <span class="hint">Arrastra para girar · rueda o pellizco para acercar · clic derecho o dos dedos para desplazar</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+        <div class="seg" role="group" aria-label="Vista">
+          <button type="button" data-view="iso" aria-pressed="true">3D</button>
+          <button type="button" data-view="side" aria-pressed="false">Lateral</button>
+          <button type="button" data-view="door" aria-pressed="false">Puertas</button>
+          <button type="button" data-view="top" aria-pressed="false">Planta</button>
+        </div>
+        <div class="pager">
+          <button type="button" class="btn" id="prevC" aria-label="Equipo anterior">‹</button>
+          <span id="pagerLbl">1 / 1</span>
+          <button type="button" class="btn" id="nextC" aria-label="Equipo siguiente">›</button>
+        </div>
+      </div>
+    </div>
+    <div class="viewer" id="viewer">
+      <div class="overlay" id="overlay"></div>
+    </div>
+    <div class="viewer-foot">
+      <div class="seq">
+        <button type="button" class="btn" id="play">Simular carga</button>
+        <label for="seqRange" class="lbl">Secuencia</label>
+        <input type="range" id="seqRange" min="0" max="0" value="0">
+        <output id="seqOut" for="seqRange"></output>
+      </div>
+      <div class="balance" id="balance">
+        <label class="ctl"><span>Posición de la carga</span>
+          <select id="balanceMode">
+            <option value="front" selected>Desde la cabecera</option>
+            <option value="center">Centrada para balancear</option>
+          </select>
+        </label>
+        <label class="ctl"><span>Tolerancia del centro de gravedad ±%</span><input type="number" id="cgTol" min="1" max="25" step="0.5" value="5" style="width:90px"></label>
+        <div class="cg-status" id="cgStatus" aria-live="polite"></div>
+      </div>
+      <div class="legend-head">
+        <span class="lbl">Visibilidad por línea</span>
+        <button type="button" class="btn" id="showAll">Mostrar todas</button>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-rep">
+    <div class="panel-head">
+      <h2 id="h-rep">Reporte de carga por equipo</h2>
+      <div class="no-print" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+        <span class="hint" id="printHint">Un reporte por cada equipo que requiere la carga</span>
+        <button type="button" class="btn primary" id="printPlan">Imprimir plano de carga</button>
+      </div>
+    </div>
+    <div class="report" id="report"></div>
+  </section>
+
+  <p class="print-only print-foot">Cardinal Point · MX · US · CA — Cálculo estimado con medidas de referencia del equipo. No sustituye la confirmación de espacio y peso de la línea transportista o naviera; el peso por eje y los amarres no están considerados.</p>
+
+  <section class="panel no-print" aria-labelledby="h-sup">
+    <div class="panel-head"><h2 id="h-sup">Supuestos y referencias</h2><span class="hint">Valores de referencia. Validar con naviera, línea transportista o la unidad real.</span></div>
+    <div class="notes">
+      <div>
+        <h3>Fórmulas</h3>
+        <ul>
+          <li>CBM por bulto = <code>L × A × H (cm) ÷ 1,000,000</code>. 1 m³ = 35.3147 ft³.</li>
+          <li>Peso volumétrico aéreo = <code>L × A × H (cm) ÷ factor</code>. Peso tasable = el mayor entre bruto y volumétrico.</li>
+          <li>LCL marítimo (W/M) = el mayor entre m³ y toneladas (<code>kg ÷ 1,000</code>). Cada consolidador puede aplicar mínimos propios.</li>
+          <li>Metros libres = largo interior menos el punto más profundo ocupado por la carga.</li>
+          <li>Centro de gravedad = promedio de la posición de cada bulto ponderado por su peso. Es indicativo: el peso por eje depende de la unidad y no se calcula aquí.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Medidas internas de referencia</h3>
+        <div class="table-scroll" style="border:0">
+          <table class="ref-table" style="min-width:0">
+            <thead><tr><th>Equipo</th><th class="num">L × A × H (m)</th><th class="num">m³</th><th class="num">Carga útil</th></tr></thead>
+            <tbody id="refRows"></tbody>
+          </table>
+        </div>
+        <p class="hint" style="margin-top:6px">Thorton, straight truck y van cambian mucho entre unidades y carroceros: captura las medidas reales de la unidad. La carga útil legal depende del país, la configuración y la carretera.</p>
+      </div>
+      <div>
+        <h3>Cómo se calcula el acomodo</h3>
+        <p>Los bultos más grandes se cargan primero, desde la cabecera hacia las puertas. Cada bloque de bultos iguales ocupa el espacio libre más cercano a la cabecera y más bajo; el hueco que deja a un lado y encima se aprovecha con lo siguiente. Sobre un bulto no apilable no se coloca nada, y uno que no se puede voltear conserva su alto. Es una estimación para cotizar y planear: no considera distribución de peso por eje, amarres, maniobras con montacargas ni tolerancias de puertas.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap">
+  <span>Cardinal Point · MX · US · CA</span>
+  <span>Cálculo estimado. No sustituye la confirmación de espacio del transportista.</span>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ---------- Equipos de referencia (medidas internas en cm, carga útil en kg) ----------
+  var EQUIP = [
+    { key: '20GP', group: 'Marítimo', name: "20' Dry", L: 589.8, W: 235.2, H: 239.3, payload: 28200 },
+    { key: '40GP', group: 'Marítimo', name: "40' Dry", L: 1203.2, W: 235.2, H: 239.3, payload: 26700 },
+    { key: '40HC', group: 'Marítimo', name: "40' High Cube", L: 1203.2, W: 235.2, H: 269.8, payload: 26500 },
+    { key: '53FT', group: 'Terrestre FTL', name: "Caja seca 53'", L: 1600, W: 250, H: 270, payload: 20000 },
+    { key: '48FT', group: 'Terrestre FTL', name: "Caja seca 48'", L: 1448, W: 250, H: 270, payload: 20000 },
+    { key: 'THORTON', group: 'Unidades de reparto (medidas variables)', name: 'Thorton', L: 750, W: 245, H: 245, payload: 12000, variable: true },
+    { key: 'STRAIGHT', group: 'Unidades de reparto (medidas variables)', name: "Straight truck 26'", L: 790, W: 244, H: 244, payload: 4500, variable: true },
+    { key: 'VAN', group: 'Unidades de reparto (medidas variables)', name: 'Van / camioneta 3.5 t', L: 450, W: 220, H: 210, payload: 3500, variable: true },
+    { key: 'CUSTOM', group: 'Otro', name: 'Personalizado', L: 1000, W: 240, H: 250, payload: 10000, variable: true }
+  ];
+  var TYPES = { caja: 'Caja', pallet: 'Pallet / tarima', crate: 'Huacal / crate' };
+  // Paleta de Cardinal Point (Dark Slate, Steel Blue, Aqua Mist y sus tonos). Cada línea puede cambiar su color.
+  var COLORS = ['#1D3557', '#A8DADC', '#457B9D', '#D6D3CA', '#8496AD', '#2F6B8A', '#C7D8E2', '#4A5F7A', '#7FB3C8', '#B9B4A8'];
+  var LETTER_ONLY = '#C7D8E2';
+  var IN = 2.54, LB = 0.45359237;
+  var SAMPLE = [
+    { type: 'pallet', desc: 'Pallet producto terminado', l: 120, w: 100, h: 150, qty: 16, wt: 520, stack: false, tilt: false },
+    { type: 'crate', desc: 'Huacal refacciones', l: 110, w: 90, h: 95, qty: 8, wt: 240, stack: true, tilt: false },
+    { type: 'caja', desc: 'Caja master 60 × 40 × 40', l: 60, w: 40, h: 40, qty: 180, wt: 18, stack: true, tilt: true },
+    { type: 'caja', desc: 'Caja 50 × 40 × 30', l: 50, w: 40, h: 30, qty: 120, wt: 9, stack: true, tilt: true }
+  ];
+
+  // ---------- Estado ----------
+  var state = { units: 'metric', equip: '53FT', overrides: {}, airFactor: 6000, avail: 1, labelMode: 'both', centered: false, tol: 5, vis: {}, lines: [], view: 0, isSample: true };
+  var nextId = 1;
+  function mkLine(o, pos) { return { id: nextId++, type: o.type || 'caja', desc: o.desc || '', l: o.l, w: o.w, h: o.h, qty: o.qty, wt: o.wt, stack: o.stack !== false, tilt: !!o.tilt, color: o.color || COLORS[pos % COLORS.length] }; }
+  function loadSample() {
+    state.lines = SAMPLE.map(function (s, k) {
+      if (state.units === 'metric') return mkLine(s, k);
+      return mkLine({ type: s.type, desc: s.desc, l: r2(s.l / IN), w: r2(s.w / IN), h: r2(s.h / IN), qty: s.qty, wt: r2(s.wt / LB), stack: s.stack, tilt: s.tilt }, k);
+    });
+    state.isSample = true;
+  }
+
+  // ---------- Utilidades ----------
+  var $ = function (id) { return document.getElementById(id); };
+  function r2(n) { return Math.round(n * 100) / 100; }
+  function fmt(n, d) { return Number(n).toLocaleString('es-MX', { minimumFractionDigits: d, maximumFractionDigits: d }); }
+  function num(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
+  function lenF() { return state.units === 'metric' ? 1 : IN; }
+  function wtF() { return state.units === 'metric' ? 1 : LB; }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function letterOf(i) { var s = ''; i++; while (i > 0) { var m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
+  function lineColor(i) { return (state.lines[i] && state.lines[i].color) || COLORS[i % COLORS.length]; }
+  function colorOf(i) { return state.labelMode === 'letter' ? LETTER_ONLY : lineColor(i); }
+  function showLetter() { return state.labelMode !== 'color'; }
+  function chip(i) { var col = colorOf(i); return '<span class="letter' + (isLight(col) ? ' light' : '') + '" style="background:' + col + '">' + (showLetter() ? letterOf(i) : '') + '</span>'; }
+  function isLight(hex) { var c = parseInt(hex.slice(1), 16), r = c >> 16, g = (c >> 8) & 255, b = c & 255; return (r * 299 + g * 587 + b * 114) / 1000 > 150; }
+  function lineName(i) { return state.lines[i] && state.lines[i].desc ? state.lines[i].desc : 'Línea ' + letterOf(i); }
+  function equipDef(key) { return EQUIP.filter(function (e) { return e.key === key; })[0]; }
+  function getContainer() {
+    var d = equipDef(state.equip), o = state.overrides[state.equip] || {};
+    return { key: d.key, name: d.name, variable: !!d.variable, L: o.L || d.L, W: o.W || d.W, H: o.H || d.H, payload: o.payload || d.payload, edited: !!state.overrides[state.equip] };
+  }
+  function wtTxt(kg, d) { return state.units === 'metric' ? fmt(kg, d) + ' kg' : fmt(kg / LB, d) + ' lb'; }
+  function lenTxt(cm) { return state.units === 'metric' ? fmt(cm / 100, 2) + ' m' : fmt(cm / IN / 12, 1) + ' ft'; }
+  function norm(line) {
+    var f = lenF(), g = wtF();
+    return { id: line.id, type: line.type, l: num(line.l) * f, w: num(line.w) * f, h: num(line.h) * f, qty: Math.max(0, Math.floor(num(line.qty))), wt: num(line.wt) * g, stack: line.stack, tilt: line.tilt };
+  }
+  function validLine(n) { return n.l > 0 && n.w > 0 && n.h > 0 && n.qty > 0; }
+
+  // ---------- Acomodo por espacios libres ----------
+  // Cada bloque de bultos iguales se coloca en el espacio libre más cercano a la cabecera (x), más bajo (y) y a la izquierda (z).
+  // El sobrante se divide en tres: encima del bloque (solo si es apilable), a un lado y hacia las puertas. Nada queda flotando.
+  var EPS = 1e-6;
+  function orientations(n) {
+    var d = [n.l, n.w, n.h], perms = [[0, 1, 2], [1, 0, 2]];
+    if (n.tilt) perms.push([0, 2, 1], [2, 0, 1], [1, 2, 0], [2, 1, 0]);
+    return perms.map(function (p) { return { a: d[p[0]], b: d[p[1]], c: d[p[2]] }; }); // a: largo, b: ancho, c: alto
+  }
+  function blockFor(o, s, n, lim) {
+    var nx = Math.floor(s.l / o.a + EPS), nz = Math.floor(s.w / o.b + EPS);
+    var ny = n.stack ? Math.floor(s.h / o.c + EPS) : (o.c <= s.h + EPS ? 1 : 0);
+    if (nx < 1 || ny < 1 || nz < 1) return null;
+    var cap = nx * ny * nz, k = Math.min(cap, lim), bx, by, bz;
+    if (k >= ny * nz) { bx = Math.min(nx, Math.floor(k / (ny * nz))); by = ny; bz = nz; }
+    else if (k >= nz) { bx = 1; by = Math.floor(k / nz); bz = nz; }
+    else { bx = 1; by = 1; bz = k; }
+    return { o: o, bx: bx, by: by, bz: bz, count: bx * by * bz, BL: bx * o.a };
+  }
+  function spaceOrder(p, q) { return (p.x - q.x) || (p.y - q.y) || (p.z - q.z); }
+  function pack(lines, C) {
+    var result = { containers: [], unplaced: [], tooHeavy: [] };
+    function newC() { var c = { boxes: [], weight: 0, vol: 0, spaces: [{ x: 0, y: 0, z: 0, l: C.L, h: C.H, w: C.W }] }; result.containers.push(c); return c; }
+    newC();
+    var order = lines.map(function (n, i) { n.idx = i; return n; }).filter(validLine)
+      .sort(function (p, q) { return (q.l * q.w * q.h) - (p.l * p.w * p.h) || p.idx - q.idx; });
+    order.forEach(function (n) {
+      var oris = orientations(n).filter(function (o) { return o.a <= C.L + EPS && o.b <= C.W + EPS && o.c <= C.H + EPS; });
+      if (!oris.length) { result.unplaced.push(n.idx); return; }
+      if (n.wt > C.payload + EPS) { result.tooHeavy.push(n.idx); return; }
+      var rem = n.qty, v = n.l * n.w * n.h, guard = 0;
+      while (rem > 0 && guard++ < 50000) {
+        var pick = null;
+        for (var ci = 0; ci < result.containers.length && !pick; ci++) {
+          var c = result.containers[ci];
+          var maxW = n.wt > 0 ? Math.floor((C.payload - c.weight) / n.wt + EPS) : Infinity;
+          if (maxW < 1) continue;
+          var lim = Math.min(rem, maxW);
+          for (var si = 0; si < c.spaces.length && !pick; si++) {
+            var s = c.spaces[si], best = null;
+            oris.forEach(function (o) {
+              var b = blockFor(o, s, n, lim);
+              if (b && (!best || b.count > best.count || (b.count === best.count && b.BL < best.BL))) best = b;
+            });
+            if (best) pick = { c: c, si: si, s: s, b: best };
+          }
+        }
+        if (!pick) {
+          if (result.containers[result.containers.length - 1].boxes.length === 0) { result.unplaced.push(n.idx); break; }
+          newC(); continue;
+        }
+        var c2 = pick.c, sp = pick.s, B = pick.b, o = B.o;
+        for (var ix = 0; ix < B.bx; ix++) for (var iy = 0; iy < B.by; iy++) for (var iz = 0; iz < B.bz; iz++) {
+          c2.boxes.push({ line: n.idx, x: sp.x + ix * o.a, y: sp.y + iy * o.c, z: sp.z + iz * o.b, dx: o.a, dy: o.c, dz: o.b, wt: n.wt });
+        }
+        c2.weight += B.count * n.wt; c2.vol += B.count * v; rem -= B.count;
+        var BL = B.bx * o.a, BH = B.by * o.c, BW = B.bz * o.b;
+        c2.spaces.splice(pick.si, 1);
+        var add = [];
+        if (n.stack) add.push({ x: sp.x, y: sp.y + BH, z: sp.z, l: BL, h: sp.h - BH, w: BW });
+        add.push({ x: sp.x, y: sp.y, z: sp.z + BW, l: BL, h: sp.h, w: sp.w - BW });
+        add.push({ x: sp.x + BL, y: sp.y, z: sp.z, l: sp.l - BL, h: sp.h, w: sp.w });
+        add.forEach(function (q) { if (q.l > 1 && q.h > 1 && q.w > 1) c2.spaces.push(q); });
+        c2.spaces.sort(spaceOrder);
+      }
+    });
+    result.containers = result.containers.filter(function (c, i) { return i === 0 || c.boxes.length; });
+    result.containers.forEach(function (c) {
+      c.boxes.sort(function (p, q) { return (p.x - q.x) || (p.y - q.y) || (p.z - q.z); });
+      var maxX = 0, sw = 0, sx = 0, sz = 0;
+      c.boxes.forEach(function (b) { maxX = Math.max(maxX, b.x + b.dx); sw += b.wt; sx += b.wt * (b.x + b.dx / 2); sz += b.wt * (b.z + b.dz / 2); });
+      c.freeLen = C.L - maxX;
+      c.cg = sw > 0 ? { x: sx / sw, z: sz / sw } : null;
+      delete c.spaces;
+    });
+    return result;
+  }
+
+  // ---------- Selector de equipo ----------
+  (function buildEquipSelect() {
+    var sel = $('container'), groups = {};
+    EQUIP.forEach(function (e) {
+      if (!groups[e.group]) { groups[e.group] = document.createElement('optgroup'); groups[e.group].label = e.group; sel.appendChild(groups[e.group]); }
+      var op = document.createElement('option'); op.value = e.key; op.textContent = e.name; groups[e.group].appendChild(op);
+    });
+    sel.value = state.equip;
+  })();
+
+  // ---------- Tabla ----------
+  var rowsEl = $('rows');
+  function renderRows() {
+    var lu = state.units === 'metric' ? 'cm' : 'in', wu = state.units === 'metric' ? 'kg' : 'lb';
+    document.querySelectorAll('.u-len').forEach(function (e) { e.textContent = lu; });
+    document.querySelectorAll('.u-wt').forEach(function (e) { e.textContent = wu; });
+    rowsEl.innerHTML = state.lines.map(function (ln, i) {
+      var col = lineColor(i);
+      return '<tr data-id="' + ln.id + '">' +
+        '<td><label class="pick' + (isLight(col) ? ' light' : '') + '" style="background:' + col + '" title="Cambiar color de la línea ' + letterOf(i) + '">' + letterOf(i) +
+        '<input type="color" id="c-' + ln.id + '" data-f="color" value="' + col + '" aria-label="Color de la línea ' + letterOf(i) + '"></label></td>' +
+        '<td><select id="t-' + ln.id + '" data-f="type" aria-label="Tipo de bulto">' + Object.keys(TYPES).map(function (k) { return '<option value="' + k + '"' + (ln.type === k ? ' selected' : '') + '>' + TYPES[k] + '</option>'; }).join('') + '</select></td>' +
+        '<td><input type="text" id="d-' + ln.id + '" data-f="desc" value="' + esc(ln.desc) + '" placeholder="Línea ' + letterOf(i) + '" aria-label="Descripción"></td>' +
+        '<td class="num"><input type="number" id="l-' + ln.id + '" data-f="l" min="0" step="any" value="' + ln.l + '" aria-label="Largo"></td>' +
+        '<td class="num"><input type="number" id="w-' + ln.id + '" data-f="w" min="0" step="any" value="' + ln.w + '" aria-label="Ancho"></td>' +
+        '<td class="num"><input type="number" id="h-' + ln.id + '" data-f="h" min="0" step="any" value="' + ln.h + '" aria-label="Alto"></td>' +
+        '<td class="num"><input type="number" class="qty" id="q-' + ln.id + '" data-f="qty" min="0" step="1" value="' + ln.qty + '" aria-label="Cantidad"></td>' +
+        '<td class="num"><input type="number" id="p-' + ln.id + '" data-f="wt" min="0" step="any" value="' + ln.wt + '" aria-label="Peso por bulto"></td>' +
+        '<td><label class="check"><input type="checkbox" id="s-' + ln.id + '" data-f="stack"' + (ln.stack ? ' checked' : '') + '> Sí</label></td>' +
+        '<td><label class="check"><input type="checkbox" id="v-' + ln.id + '" data-f="tilt"' + (ln.tilt ? ' checked' : '') + '> Sí</label></td>' +
+        '<td class="num cbm-cell" data-out="cbm"></td>' +
+        '<td class="num cbm-cell" data-out="wt"></td>' +
+        '<td data-out="ld"></td>' +
+        '<td><button type="button" class="del" data-del="' + ln.id + '" aria-label="Eliminar línea">×</button></td>' +
+        '</tr>';
+    }).join('');
+  }
+  function lineFromEvent(e) {
+    var tr = e.target.closest('tr'); if (!tr) return null;
+    return state.lines.find(function (x) { return x.id == tr.dataset.id; }) || null;
+  }
+  rowsEl.addEventListener('input', function (e) {
+    var ln = lineFromEvent(e), f = e.target.dataset.f; if (!ln || !f) return;
+    if (f === 'stack' || f === 'tilt') ln[f] = e.target.checked;
+    else if (f === 'color') {
+      ln.color = e.target.value;
+      var lab = e.target.parentNode; lab.style.background = ln.color; lab.classList.toggle('light', isLight(ln.color));
+      schedule(); return;
+    }
+    else if (f !== 'type') ln[f] = e.target.value;
+    markEdited(); schedule();
+  });
+  rowsEl.addEventListener('change', function (e) {
+    var ln = lineFromEvent(e), f = e.target.dataset.f; if (!ln || !f) return;
+    if (f === 'type') {
+      ln.type = e.target.value;
+      if (ln.type !== 'caja') { ln.tilt = false; var cb = $('v-' + ln.id); if (cb) cb.checked = false; }
+    } else if (f === 'stack' || f === 'tilt') ln[f] = e.target.checked;
+    markEdited(); recompute();
+  });
+  rowsEl.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-del]'); if (!b) return;
+    state.lines = state.lines.filter(function (x) { return x.id != b.dataset.del; });
+    markEdited(); renderRows(); recompute();
+  });
+  function markEdited() { state.isSample = false; $('sampleTag').hidden = true; }
+  var inputTimer = null;
+  function schedule() { clearTimeout(inputTimer); inputTimer = setTimeout(recompute, 120); }
+
+  $('addRow').addEventListener('click', function () {
+    var d = state.units === 'metric' ? { l: 120, w: 100, h: 120, wt: 400 } : { l: 48, w: 40, h: 48, wt: 880 };
+    state.lines.push(mkLine({ type: 'pallet', desc: '', l: d.l, w: d.w, h: d.h, qty: 1, wt: d.wt, stack: false, tilt: false }, state.lines.length));
+    markEdited(); renderRows(); recompute();
+    var el = $('d-' + state.lines[state.lines.length - 1].id); if (el) el.focus();
+  });
+  $('clearAll').addEventListener('click', function () { state.lines = []; markEdited(); renderRows(); recompute(); });
+  $('loadSample').addEventListener('click', function () { loadSample(); $('sampleTag').hidden = false; renderRows(); recompute(true); });
+
+  // ---------- Controles ----------
+  function setUnits(u) {
+    if (u === state.units) return;
+    var toImp = u === 'imperial';
+    state.lines.forEach(function (ln) {
+      ['l', 'w', 'h'].forEach(function (k) { ln[k] = r2(toImp ? num(ln[k]) / IN : num(ln[k]) * IN); });
+      ln.wt = r2(toImp ? num(ln.wt) / LB : num(ln.wt) * LB);
+    });
+    state.units = u;
+    $('u-metric').setAttribute('aria-pressed', String(u === 'metric'));
+    $('u-imperial').setAttribute('aria-pressed', String(u === 'imperial'));
+    renderRows(); syncDims(); recompute();
+  }
+  $('u-metric').addEventListener('click', function () { setUnits('metric'); });
+  $('u-imperial').addEventListener('click', function () { setUnits('imperial'); });
+  $('container').addEventListener('change', function (e) { state.equip = e.target.value; state.view = 0; syncDims(); recompute(true); });
+  $('avail').addEventListener('input', function (e) { state.avail = Math.max(1, Math.floor(num(e.target.value)) || 1); recompute(); });
+  $('airFactor').addEventListener('change', function (e) { state.airFactor = num(e.target.value); recompute(); });
+  $('labelMode').addEventListener('change', function (e) { state.labelMode = e.target.value; recompute(); });
+  ['r-client', 'r-ref', 'r-notes'].forEach(function (id) { $(id).addEventListener('input', renderPrintHead); });
+  function syncDims() {
+    var C = getContainer(), f = lenF(), g = wtF();
+    $('c-l').value = r2(C.L / f); $('c-w').value = r2(C.W / f); $('c-h').value = r2(C.H / f); $('c-p').value = r2(C.payload / g);
+    $('resetDims').hidden = !C.edited;
+    $('dimsHint').textContent = C.edited ? 'Medidas editadas para esta unidad.'
+      : (C.variable ? 'Medidas típicas de referencia. Esta unidad varía mucho: captura las medidas internas reales.' : 'Medidas internas de referencia. Puedes ajustarlas a la unidad real.');
+  }
+  ['c-l', 'c-w', 'c-h', 'c-p'].forEach(function (id) {
+    $(id).addEventListener('input', function () {
+      var f = lenF(), g = wtF();
+      var L = num($('c-l').value) * f, W = num($('c-w').value) * f, H = num($('c-h').value) * f, P = num($('c-p').value) * g;
+      if (L > 0 && W > 0 && H > 0 && P > 0) {
+        state.overrides[state.equip] = { L: L, W: W, H: H, payload: P };
+        $('resetDims').hidden = false; $('dimsHint').textContent = 'Medidas editadas para esta unidad.';
+        schedule();
+      }
+    });
+  });
+  $('resetDims').addEventListener('click', function () { delete state.overrides[state.equip]; syncDims(); recompute(true); });
+
+  // ---------- Cálculo ----------
+  var last = null;
+  function recompute(resetCam) {
+    var C = getContainer();
+    var ns = state.lines.map(norm);
+    var totVolCm = 0, totKg = 0, totBoxes = 0;
+    ns.forEach(function (n) { if (validLine(n)) { totVolCm += n.l * n.w * n.h * n.qty; totKg += n.wt * n.qty; totBoxes += n.qty; } });
+    var res = pack(ns.map(function (n) { return Object.assign({}, n); }), C);
+    finishContainers(res, C);
+    var nNeeded = res.containers.filter(function (c) { return c.boxes.length; }).length;
+    if (state.view >= res.containers.length) state.view = 0;
+
+    // Bultos cargados por línea dentro de los equipos disponibles
+    var loaded = ns.map(function () { return 0; }), loadedAll = ns.map(function () { return 0; });
+    res.containers.forEach(function (c, ci) { c.boxes.forEach(function (b) { loadedAll[b.line]++; if (ci < state.avail) loaded[b.line]++; }); });
+    var placedAvail = loaded.reduce(function (s, v) { return s + v; }, 0);
+    var missVol = 0, missKg = 0;
+    ns.forEach(function (n, i) { if (validLine(n)) { var m = n.qty - loaded[i]; missVol += m * n.l * n.w * n.h; missKg += m * n.wt; } });
+
+    last = { C: C, ns: ns, res: res, cbm: totVolCm / 1e6, totKg: totKg, volKg: totVolCm / state.airFactor, totBoxes: totBoxes,
+      nNeeded: nNeeded, loaded: loaded, loadedAll: loadedAll, placedAvail: placedAvail, missVol: missVol, missKg: missKg };
+    last.chargeable = Math.max(totKg, last.volKg);
+    last.wm = Math.max(last.cbm, totKg / 1000);
+
+    renderRowOutputs();
+    renderVerdict();
+    renderKpis();
+    renderLegend();
+    renderCgStatus();
+    renderRef();
+    build3D(resetCam);
+    scheduleReport();
+  }
+
+  // Centro de gravedad, reparto delantero/trasero y, si se pide, carga centrada en el largo y el ancho.
+  function finishContainers(res, C) {
+    res.containers.forEach(function (c) {
+      var B = c.boxes;
+      if (!B.length) { c.freeLen = C.L; c.frontGap = 0; c.cg = null; c.front = 0; c.rear = 0; return; }
+      function stats() {
+        var sw = 0, sx = 0, sy = 0, sz = 0, minX = Infinity, maxX = 0, maxZ = 0;
+        B.forEach(function (b) {
+          sw += b.wt; sx += b.wt * (b.x + b.dx / 2); sy += b.wt * (b.y + b.dy / 2); sz += b.wt * (b.z + b.dz / 2);
+          minX = Math.min(minX, b.x); maxX = Math.max(maxX, b.x + b.dx); maxZ = Math.max(maxZ, b.z + b.dz);
+        });
+        return { sw: sw, cg: sw > 0 ? { x: sx / sw, y: sy / sw, z: sz / sw } : null, minX: minX, maxX: maxX, maxZ: maxZ };
+      }
+      var st = stats();
+      if (state.centered && st.cg) {
+        // Desplaza el bloque completo hacia el centro sin salir del equipo (requiere bloqueo o arriostre en la práctica).
+        var sx = Math.max(0, Math.min(C.L - st.maxX, C.L / 2 - st.cg.x));
+        var sz = Math.max(0, Math.min(C.W - st.maxZ, C.W / 2 - st.cg.z));
+        if (sx > 0 || sz > 0) { B.forEach(function (b) { b.x += sx; b.z += sz; }); st = stats(); }
+      }
+      c.cg = st.cg; c.frontGap = st.minX; c.freeLen = C.L - (st.maxX - st.minX);
+      var front = 0;
+      B.forEach(function (b) { if (b.x + b.dx / 2 < C.L / 2) front += b.wt; });
+      c.front = front; c.rear = st.sw - front;
+      if (c.cg) {
+        c.devL = (c.cg.x - C.L / 2) / C.L * 100; c.devW = (c.cg.z - C.W / 2) / C.W * 100;
+        c.cgOk = Math.abs(c.devL) <= state.tol && Math.abs(c.devW) <= state.tol;
+      }
+    });
+  }
+  function signed(n) { return (n > 0 ? '+' : n < 0 ? '−' : '') + fmt(Math.abs(n), 1); }
+  function cgSummary(c, C) {
+    if (!c || !c.cg) return null;
+    var tot = c.front + c.rear, fp = tot ? c.front / tot * 100 : 0;
+    var tip = '';
+    if (!c.cgOk) {
+      if (c.devL < -state.tol) tip = 'El peso se concentra hacia la cabecera. ' + (state.centered ? 'Ya está centrada: reduce o reparte los bultos pesados, o usa más de un equipo.' : 'Prueba “Centrada para balancear”, o reparte los bultos pesados a lo largo.');
+      else if (c.devL > state.tol) tip = 'El peso se concentra hacia las puertas. Carga primero los bultos más pesados o reparte la carga.';
+      else tip = 'El peso está cargado hacia un costado. ' + (state.centered ? 'Reacomoda los bultos pesados al centro del ancho.' : 'Prueba “Centrada para balancear”.');
+    }
+    return { fp: fp, tip: tip,
+      html: '<div class="row"><span class="chip-st ' + (c.cgOk ? 'ok' : 'part') + '">' + (c.cgOk ? 'Balanceado' : 'Revisar balance') + '</span>' +
+        '<span>Largo <b>' + fmt(c.cg.x / 100, 2) + ' m</b> (' + signed(c.devL) + '% del centro)</span>' +
+        '<span>Ancho <b>' + signed(c.devW) + '%</b></span><span>Altura <b>' + fmt(c.cg.y / 100, 2) + ' m</b></span></div>' +
+        '<div class="row"><span>Mitad delantera <b>' + fmt(fp, 0) + '%</b></span><div class="split" aria-hidden="true"><i style="width:' + fp.toFixed(1) + '%"></i><i style="width:' + (100 - fp).toFixed(1) + '%"></i></div><span>Mitad trasera <b>' + fmt(100 - fp, 0) + '%</b></span></div>' +
+        (c.frontGap > 1 ? '<div class="tip">Espacio libre en cabecera: ' + lenTxt(c.frontGap) + '. Requiere bloqueo o arriostre para que la carga no se desplace.</div>' : '') +
+        (tip ? '<div class="tip">' + tip + '</div>' : '') };
+  }
+  function renderCgStatus() {
+    var c = last.res.containers[state.view], sm = cgSummary(c, last.C);
+    $('cgStatus').innerHTML = sm ? sm.html : '<span class="hint">Sin carga en este equipo.</span>';
+  }
+  function renderRowOutputs() {
+    var rows = rowsEl.querySelectorAll('tr'), d = last;
+    d.ns.forEach(function (n, i) {
+      var tr = rows[i]; if (!tr) return;
+      var ok = validLine(n), m3 = ok ? n.l * n.w * n.h * n.qty / 1e6 : 0, kg = ok ? n.wt * n.qty : 0;
+      tr.querySelector('[data-out="cbm"]').textContent = state.units === 'metric' ? fmt(m3, 3) + ' m³' : fmt(m3 * 35.3147, 2) + ' ft³';
+      tr.querySelector('[data-out="wt"]').textContent = wtTxt(kg, 1);
+      var ld = d.loaded[i], cls = !ok ? '' : ld >= n.qty ? 'ok' : ld > 0 ? 'part' : 'no';
+      tr.querySelector('[data-out="ld"]').innerHTML = ok ? '<span class="chip-st ' + cls + '">' + fmt(ld, 0) + '/' + fmt(n.qty, 0) + '</span>' : '';
+      tr.classList.toggle('row-warn', d.res.unplaced.indexOf(i) >= 0 || d.res.tooHeavy.indexOf(i) >= 0);
+    });
+    var msgs = [];
+    d.res.unplaced.forEach(function (i) { msgs.push('“' + lineName(i) + '” no cabe por medidas en ' + d.C.name + (state.lines[i].tilt ? '.' : '. Si el bulto se puede voltear, marca “Voltear”.')); });
+    d.res.tooHeavy.forEach(function (i) { msgs.push('“' + lineName(i) + '”: un solo bulto excede la carga útil del equipo.'); });
+    $('msg').textContent = msgs.join(' ');
+  }
+
+  function renderVerdict() {
+    var d = last, el = $('verdict'), C = d.C, av = state.avail;
+    if (!d.totBoxes) { el.className = 'verdict'; el.innerHTML = '<span class="badge" style="background:var(--muted)">Sin carga</span><span class="vt">Agrega al menos una línea con medidas y cantidad.</span>'; return; }
+    var fits = d.placedAvail >= d.totBoxes;
+    var eq = av + ' × ' + esc(C.name);
+    if (fits) {
+      el.className = 'verdict';
+      var lastC = d.res.containers[d.nNeeded - 1];
+      el.innerHTML = '<span class="badge">Cabe</span><span class="vt">Toda la carga entra en ' + (d.nNeeded === 1 ? '1 × ' + esc(C.name) : d.nNeeded + ' × ' + esc(C.name)) + (d.nNeeded < av ? ' (de ' + av + ' disponibles)' : '') + '</span>' +
+        '<span class="vs">' + fmt(d.totBoxes, 0) + ' bultos, ' + fmt(d.cbm, 2) + ' m³ y ' + wtTxt(d.totKg, 0) + '. Quedan ' + lenTxt(lastC.freeLen) + ' libres en el último equipo.</span>';
+    } else {
+      el.className = 'verdict bad';
+      var need = d.res.unplaced.length || d.res.tooHeavy.length ? 'Hay líneas que no caben en este tipo de equipo; revisa los avisos de la tabla.' : 'Se requieren ' + d.nNeeded + ' × ' + esc(C.name) + ' para toda la carga.';
+      el.innerHTML = '<span class="badge">No cabe</span><span class="vt">En ' + eq + ' entran ' + fmt(d.placedAvail, 0) + ' de ' + fmt(d.totBoxes, 0) + ' bultos</span>' +
+        '<span class="vs">Faltan ' + fmt(d.totBoxes - d.placedAvail, 0) + ' bultos (' + fmt(d.missVol / 1e6, 2) + ' m³, ' + wtTxt(d.missKg, 0) + '). ' + need + '</span>';
+    }
+  }
+
+  function meter(pct) {
+    var cls = pct > 100 ? 'over' : pct >= 90 ? 'hi' : '';
+    return '<div class="meter" aria-hidden="true"><i class="' + cls + '" style="width:' + Math.min(100, pct).toFixed(1) + '%"></i></div>';
+  }
+  function renderKpis() {
+    var d = last, C = d.C, imp = state.units === 'imperial';
+    var capVol = C.L * C.W * C.H, vc = d.res.containers[state.view] || { vol: 0, weight: 0, freeLen: C.L };
+    var volPct = vc.vol / capVol * 100, wPct = vc.weight / C.payload * 100;
+    var w = function (kg, dd) { return imp ? fmt(kg / LB, dd) + '<small>lb</small>' : fmt(kg, dd) + '<small>kg</small>'; };
+    function kpi(label, v, s) { return '<div class="kpi"><span class="lbl">' + label + '</span>' + v + '<span class="s">' + s + '</span></div>'; }
+    $('kpis').innerHTML =
+      kpi('Volumen total', '<span class="v accent">' + fmt(d.cbm, 3) + '<small>m³</small></span>', fmt(d.cbm * 35.3147, 2) + ' ft³ · ' + fmt(d.totBoxes, 0) + ' bultos') +
+      kpi('Peso bruto', '<span class="v">' + w(d.totKg, 1) + '</span>', imp ? fmt(d.totKg, 1) + ' kg' : fmt(d.totKg / LB, 1) + ' lb') +
+      kpi('Aéreo · peso tasable', '<span class="v">' + w(d.chargeable, 1) + '</span>', 'Volumétrico ' + wtTxt(d.volKg, 1) + ' · cobra por ' + (d.volKg > d.totKg ? 'volumen' : 'peso')) +
+      kpi('Marítimo LCL · W/M', '<span class="v">' + fmt(d.wm, 3) + '<small>' + (d.cbm >= d.totKg / 1000 ? 'm³' : 't') + '</small></span>', 'El mayor entre m³ y toneladas') +
+      kpi('Equipos necesarios', '<span class="v">' + fmt(d.nNeeded, 0) + '<small>× ' + esc(C.name) + '</small></span>', 'Disponibles: ' + state.avail) +
+      kpi('Equipo ' + (state.view + 1) + ' de ' + d.res.containers.length, '<span class="v">' + fmt(volPct, 1) + '<small>% vol.</small></span>',
+        'Peso ' + fmt(wPct, 1) + '% · libres ' + lenTxt(vc.freeLen) + meter(volPct));
+    $('pagerLbl').textContent = (state.view + 1) + ' / ' + d.res.containers.length;
+    $('prevC').disabled = state.view <= 0;
+    $('nextC').disabled = state.view >= d.res.containers.length - 1;
+  }
+  function renderLegend() {
+    var cont = last.res.containers[state.view], counts = {};
+    if (cont) cont.boxes.forEach(function (b) { counts[b.line] = (counts[b.line] || 0) + 1; });
+    $('legend').innerHTML = last.ns.map(function (n, i) {
+      if (!validLine(n)) return '';
+      var v = visOf(i), id = state.lines[i].id, pct = Math.round(v.op * 100);
+      return '<div class="lg-item' + (v.hidden ? ' off' : '') + '" data-id="' + id + '">' +
+        '<label class="check"><input type="checkbox" id="vis-' + id + '" data-vis="show"' + (v.hidden ? '' : ' checked') + ' aria-label="Mostrar ' + esc(lineName(i)) + '"> ' + chip(i) + '</label>' +
+        '<span class="nm" title="' + esc(lineName(i)) + '">' + esc(lineName(i)) + ' <span class="hint">· ' + fmt(counts[i] || 0, 0) + ' aquí</span></span>' +
+        '<label class="op"><span class="lbl">Opacidad</span><input type="range" id="op-' + id + '" data-vis="op" min="10" max="100" step="5" value="' + pct + '" aria-label="Opacidad de ' + esc(lineName(i)) + '"><output>' + pct + '%</output></label>' +
+        '</div>';
+    }).join('');
+  }
+  var DEFAULT_OP = 0.64;
+  function visOf(i) { var ln = state.lines[i]; return (ln && state.vis[ln.id]) || { hidden: false, op: DEFAULT_OP }; }
+  function setVis(id, patch) {
+    var cur = state.vis[id] || { hidden: false, op: DEFAULT_OP };
+    state.vis[id] = { hidden: 'hidden' in patch ? patch.hidden : cur.hidden, op: 'op' in patch ? patch.op : cur.op };
+  }
+  // Aplica visibilidad y opacidad a la vista 3D sin reconstruir la escena.
+  function applyVis() {
+    if (!three || !three.built) return;
+    three.built.meshes.forEach(function (m) {
+      var v = visOf(m.userData.line), k = m.userData.kind;
+      m.visible = !v.hidden;
+      if (k === 'glass') { m.material.opacity = v.op; m.material.depthWrite = v.op >= 0.99; }
+      else if (k === 'base') { m.material.transparent = v.op < 0.95; m.material.opacity = Math.min(1, v.op + 0.25); }
+      else if (k === 'edge') { m.material.opacity = Math.min(0.9, 0.5 * v.op / DEFAULT_OP); }
+      m.material.needsUpdate = true;
+    });
+  }
+  $('legend').addEventListener('input', function (e) {
+    var item = e.target.closest('.lg-item'); if (!item) return;
+    var id = +item.dataset.id;
+    if (e.target.dataset.vis === 'op') { setVis(id, { op: num(e.target.value) / 100 }); e.target.nextElementSibling.textContent = e.target.value + '%'; }
+    if (e.target.dataset.vis === 'show') { setVis(id, { hidden: !e.target.checked }); item.classList.toggle('off', !e.target.checked); }
+    applyVis();
+  });
+  $('showAll').addEventListener('click', function () { state.vis = {}; renderLegend(); applyVis(); });
+  function renderRef() {
+    var f = state.units === 'metric';
+    $('refRows').innerHTML = EQUIP.filter(function (e) { return e.key !== 'CUSTOM'; }).map(function (c) {
+      return '<tr><th style="font-family:var(--font-sans);font-size:13px;text-transform:none;letter-spacing:0;color:var(--ink-body)">' + esc(c.name) + (c.variable ? ' *' : '') + '</th><td class="num">' +
+        fmt(c.L / 100, 2) + ' × ' + fmt(c.W / 100, 2) + ' × ' + fmt(c.H / 100, 2) + '</td><td class="num">' + fmt(c.L * c.W * c.H / 1e6, 1) +
+        '</td><td class="num">' + (f ? fmt(c.payload, 0) + ' kg' : fmt(c.payload / LB, 0) + ' lb') + '</td></tr>';
+    }).join('') + '<tr><td colspan="4" class="hint" style="font-family:var(--font-sans)">* Valores típicos, varían por unidad.</td></tr>';
+  }
+
+  // ---------- Copiar resumen ----------
+  $('copySummary').addEventListener('click', function () {
+    if (!last) return;
+    var d = last, imp = state.units === 'imperial', u = imp ? 'in' : 'cm';
+    var out = ['Cardinal Point · Plan de carga', 'Equipo: ' + state.avail + ' × ' + d.C.name + ' (' + fmt(d.C.L / 100, 2) + ' × ' + fmt(d.C.W / 100, 2) + ' × ' + fmt(d.C.H / 100, 2) + ' m int.)', ''];
+    state.lines.forEach(function (ln, i) {
+      out.push(letterOf(i) + '. ' + lineName(i) + ' (' + TYPES[ln.type] + '): ' + ln.qty + ' × ' + ln.l + ' × ' + ln.w + ' × ' + ln.h + ' ' + u + ', ' + ln.wt + (imp ? ' lb' : ' kg') + ' c/u' +
+        (ln.stack ? '' : ', no apilable') + ' · cargado ' + d.loaded[i] + '/' + (Math.floor(num(ln.qty)) || 0));
+    });
+    out.push('', 'Resultado: ' + (d.placedAvail >= d.totBoxes ? 'CABE' : 'NO CABE (faltan ' + (d.totBoxes - d.placedAvail) + ' bultos)'),
+      'Equipos necesarios: ' + d.nNeeded,
+      'Volumen total: ' + fmt(d.cbm, 3) + ' m³ · Peso bruto: ' + wtTxt(d.totKg, 1),
+      'Aéreo (1:' + state.airFactor + '): tasable ' + wtTxt(d.chargeable, 1) + ' · LCL W/M: ' + fmt(d.wm, 3),
+      '', 'Estimación. Sujeto a confirmación del transportista.');
+    var text = out.join('\n');
+    var done = function (m) { $('copyMsg').textContent = m; setTimeout(function () { $('copyMsg').textContent = ''; }, 2500); };
+    function fallback() {
+      var ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done('Resumen copiado'); } catch (e) { done('No se pudo copiar'); }
+      document.body.removeChild(ta);
+    }
+    try { navigator.clipboard.writeText(text).then(function () { done('Resumen copiado'); }, fallback); } catch (e) { fallback(); }
+  });
+
+  // ---------- 3D ----------
+  var viewerEl = $('viewer'), three = null, snap = null;
+  function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888'; }
+  var texCache = {};
+  // Textura del rótulo para el cristal. Sobre tintes claros se usa como map (letra oscura que multiplica el tinte);
+  // sobre tintes oscuros como emissiveMap (letra que brilla en blanco). El resto de la cara queda neutro.
+  function textureFor(i, type) {
+    var col = colorOf(i), light = isLight(col);
+    var key = i + '|' + type + '|' + col + '|' + state.labelMode;
+    if (texCache[key]) return texCache[key];
+    var cv = document.createElement('canvas'); cv.width = cv.height = 128;
+    var g = cv.getContext('2d'), base = light ? '#FFFFFF' : '#000000', ink = light ? 'rgba(20,38,61,.78)' : 'rgba(255,255,255,.95)', faint = light ? 'rgba(20,38,61,.14)' : 'rgba(255,255,255,.22)';
+    g.fillStyle = base; g.fillRect(0, 0, 128, 128);
+    g.strokeStyle = faint; g.lineWidth = 3;
+    if (type === 'crate') {
+      [26, 64, 102].forEach(function (y) { g.beginPath(); g.moveTo(4, y); g.lineTo(124, y); g.stroke(); });
+      g.beginPath(); g.moveTo(8, 8); g.lineTo(120, 120); g.stroke();
+    } else if (type === 'pallet') {
+      for (var k = -128; k < 128; k += 26) { g.beginPath(); g.moveTo(k, 128); g.lineTo(k + 128, 0); g.stroke(); }
+    } else {
+      g.beginPath(); g.moveTo(0, 64); g.lineTo(128, 64); g.stroke();
+    }
+    if (showLetter()) {
+      g.fillStyle = ink; g.font = '600 58px "DM Sans", Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(letterOf(i), 64, 68);
+    }
+    var t = new THREE.CanvasTexture(cv); t.anisotropy = 4;
+    texCache[key] = { tex: t, light: light }; return texCache[key];
+  }
+  function glassMaterial(i, type, opacity) {
+    var tx = textureFor(i, type);
+    var m = new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color(colorOf(i)).lerp(new THREE.Color('#1D3557'), isLight(colorOf(i)) ? 0.38 : 0), transparent: true, opacity: opacity, roughness: 0.08, metalness: 0,
+      clearcoat: 0.7, clearcoatRoughness: 0.08, reflectivity: 0.25, envMapIntensity: 0.55, depthWrite: false
+    });
+    if (tx.light) m.map = tx.tex;
+    else { m.emissiveMap = tx.tex; m.emissive = new THREE.Color('#FFFFFF'); m.emissiveIntensity = 0.85; }
+    return m;
+  }
+
+  function addLights(scene) {
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 0.8));
+    var dir = new THREE.DirectionalLight(0xffffff, 0.75); dir.position.set(6, 12, 8); scene.add(dir);
+    var dir2 = new THREE.DirectionalLight(0xffffff, 0.25); dir2.position.set(-8, 5, -6); scene.add(dir2);
+  }
+  function initThree() {
+    if (typeof THREE === 'undefined') { viewerEl.insertAdjacentHTML('beforeend', '<div class="webgl-off">No se pudo cargar el motor 3D. Revisa tu conexión y recarga la página.</div>'); return null; }
+    var renderer;
+    try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); renderer.setClearColor(0x000000, 0); }
+    catch (e) { viewerEl.insertAdjacentHTML('beforeend', '<div class="webgl-off">Tu navegador no tiene WebGL activo; los cálculos siguen disponibles.</div>'); return null; }
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    viewerEl.insertBefore(renderer.domElement, viewerEl.firstChild);
+    var scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(40, 1, 0.05, 500);
+    var controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; controls.dampingFactor = 0.08; controls.maxPolarAngle = Math.PI * 0.495; controls.screenSpacePanning = true;
+    addLights(scene);
+    var t = { renderer: renderer, scene: scene, camera: camera, controls: controls, built: null, dims: null };
+    function resize() {
+      var w = viewerEl.clientWidth, h = viewerEl.clientHeight; if (!w || !h) return;
+      renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+    }
+    new ResizeObserver(resize).observe(viewerEl); resize();
+    (function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
+    try {
+      var sr = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+      sr.setPixelRatio(1); sr.setSize(960, 480, false);
+      var ss = new THREE.Scene(); addLights(ss); ss.background = new THREE.Color('#E9EDF1');
+      snap = { renderer: sr, scene: ss, camera: new THREE.PerspectiveCamera(40, 2, 0.05, 500) };
+    } catch (e) { snap = null; }
+    return t;
+  }
+  function disposeObj(o) {
+    o.traverse(function (c) { if (c.geometry) c.geometry.dispose(); if (c.material) c.material.dispose(); });
+  }
+  // Construye el equipo ci con su carga. colors: { edge, grid } para el tema.
+  function buildGroup(ci, colors) {
+    var C = last.C, S = 0.01, L = C.L * S, W = C.W * S, H = C.H * S;
+    var g = new THREE.Group(); g.position.set(-L / 2, 0, -W / 2);
+    var shellGeo = new THREE.BoxGeometry(L, H, W); shellGeo.translate(L / 2, H / 2, W / 2);
+    var edge = new THREE.LineSegments(new THREE.EdgesGeometry(shellGeo), new THREE.LineBasicMaterial({ color: colors.edge }));
+    g.add(edge);
+    g.add(new THREE.Mesh(shellGeo, new THREE.MeshBasicMaterial({ color: '#457B9D', transparent: true, opacity: 0.06, depthWrite: false, side: THREE.BackSide })));
+    var floorGeo = new THREE.PlaneGeometry(L, W); floorGeo.rotateX(-Math.PI / 2); floorGeo.translate(L / 2, 0.001, W / 2);
+    g.add(new THREE.Mesh(floorGeo, new THREE.MeshPhysicalMaterial({ color: colors.floor || '#B8C3CD', roughness: 0.35, clearcoat: 0.6, transparent: true, opacity: 0.85 })));
+    var gp = [];
+    for (var gx = 1; gx < L; gx += 1) gp.push(gx, 0.003, 0, gx, 0.003, W);
+    var grid = new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(gp, 3)), new THREE.LineBasicMaterial({ color: colors.grid, transparent: true, opacity: 0.8 }));
+    g.add(grid);
+    var door = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshBasicMaterial({ color: '#A8DADC', transparent: true, opacity: 0.14, depthWrite: false, side: THREE.DoubleSide }));
+    door.rotation.y = Math.PI / 2; door.position.set(L, H / 2, W / 2); g.add(door);
+
+    var cont = last.res.containers[ci] || { boxes: [] }, boxes = cont.boxes, byLine = {};
+    boxes.forEach(function (b, k) { (byLine[b.line] = byLine[b.line] || []).push(k); });
+    var unit = new THREE.BoxGeometry(1, 1, 1), dummy = new THREE.Object3D(), gap = 0.004, meshes = [];
+    function inst(mat, idxs, fn, li, kind) {
+      var m = new THREE.InstancedMesh(unit, mat, idxs.length);
+      idxs.forEach(function (k, j) { fn(boxes[k]); dummy.updateMatrix(); m.setMatrixAt(j, dummy.matrix); });
+      m.instanceMatrix.needsUpdate = true; m.userData = { ranks: idxs, line: li, kind: kind }; g.add(m); meshes.push(m);
+    }
+    // Aristas de cada línea, en el mismo orden de carga que sus bultos
+    function edgesFor(idxs, li) {
+      var ep = new Float32Array(idxs.length * 72), o = 0;
+      idxs.forEach(function (k) {
+        var b = boxes[k];
+        var x0 = b.x * S + gap / 2, y0 = b.y * S + gap / 2, z0 = b.z * S + gap / 2, x1 = x0 + b.dx * S - gap, y1 = y0 + b.dy * S - gap, z1 = z0 + b.dz * S - gap;
+        var v = [[x0,y0,z0],[x1,y0,z0],[x1,y1,z0],[x0,y1,z0],[x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1]];
+        [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]].forEach(function (e) {
+          ep[o++] = v[e[0]][0]; ep[o++] = v[e[0]][1]; ep[o++] = v[e[0]][2];
+          ep[o++] = v[e[1]][0]; ep[o++] = v[e[1]][1]; ep[o++] = v[e[1]][2];
+        });
+      });
+      var eg = new THREE.BufferGeometry(); eg.setAttribute('position', new THREE.BufferAttribute(ep, 3));
+      var m = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: colorOf(li), transparent: true, opacity: 0.5 }));
+      m.userData = { ranks: idxs, line: li, kind: 'edge' }; g.add(m); meshes.push(m);
+    }
+    Object.keys(byLine).forEach(function (li) {
+      var idxs = byLine[li], type = state.lines[li] ? state.lines[li].type : 'caja';
+      var mat = glassMaterial(+li, type, colors.glass || 0.64);
+      if (type === 'pallet') {
+        // Base de madera de la tarima (aprox. 15 cm, incluida en el alto capturado)
+        inst(new THREE.MeshPhysicalMaterial({ color: '#A88660', roughness: 0.55, clearcoat: 0.4 }), idxs, function (b) {
+          var hb = Math.min(15, b.dy * 0.3) * S;
+          dummy.position.set((b.x + b.dx / 2) * S, b.y * S + hb / 2, (b.z + b.dz / 2) * S);
+          dummy.scale.set(b.dx * S - gap, hb - gap / 2, b.dz * S - gap);
+        }, +li, 'base');
+        inst(mat, idxs, function (b) {
+          var hb = Math.min(15, b.dy * 0.3) * S, inset = Math.min(2, b.dx * 0.03) * S, hl = b.dy * S - hb;
+          dummy.position.set((b.x + b.dx / 2) * S, b.y * S + hb + hl / 2, (b.z + b.dz / 2) * S);
+          dummy.scale.set(b.dx * S - gap - 2 * inset, hl - gap, b.dz * S - gap - 2 * inset);
+        }, +li, 'glass');
+      } else {
+        inst(mat, idxs, function (b) {
+          dummy.position.set((b.x + b.dx / 2) * S, (b.y + b.dy / 2) * S, (b.z + b.dz / 2) * S);
+          dummy.scale.set(Math.max(0.001, b.dx * S - gap), Math.max(0.001, b.dy * S - gap), Math.max(0.001, b.dz * S - gap));
+        }, +li, 'glass');
+      }
+      edgesFor(idxs, +li);
+    });
+    // Centro de gravedad: poste vertical sobre el piso
+    if (cont.cg) {
+      // Zona objetivo: centro del piso ± tolerancia
+      var zone = new THREE.Mesh(new THREE.PlaneGeometry(L * state.tol / 50, W * state.tol / 50), new THREE.MeshBasicMaterial({ color: cont.cgOk ? '#2F7D5B' : '#B26B00', transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide }));
+      zone.rotation.x = -Math.PI / 2; zone.position.set(L / 2, 0.008, W / 2); g.add(zone);
+      var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, H * 1.12, 10), new THREE.MeshBasicMaterial({ color: cont.cgOk ? colors.edge : '#B3383B' }));
+      pole.position.set(cont.cg.x * S, H * 0.56, cont.cg.z * S); g.add(pole);
+      var ring = new THREE.Mesh(new THREE.RingGeometry(0.12, 0.18, 32), new THREE.MeshBasicMaterial({ color: colors.edge, side: THREE.DoubleSide }));
+      ring.rotation.x = -Math.PI / 2; ring.position.set(cont.cg.x * S, 0.006, cont.cg.z * S); g.add(ring);
+    }
+    return { group: g, meshes: meshes, total: boxes.length, grid: grid, edge: edge, L: L, W: W, H: H };
+  }
+  function themeColors() { return { edge: cssVar('--scene-edge'), grid: cssVar('--scene-grid'), floor: isLight(cssVar('--scene')) ? '#B8C3CD' : '#2E4A68' }; }
+  function applyTheme() {
+    if (!three) return;
+    three.scene.background = null;
+    if (three.built) { var c = themeColors(); three.built.edge.material.color.set(c.edge); three.built.grid.material.color.set(c.grid); }
+  }
+  function build3D(resetCam) {
+    if (!three) return;
+    if (three.built) { three.scene.remove(three.built.group); disposeObj(three.built.group); }
+    var b = buildGroup(state.view, themeColors());
+    three.built = b; three.scene.add(b.group);
+    var range = $('seqRange'); range.max = String(b.total); range.value = String(b.total);
+    setSequence(b.total);
+    applyVis();
+    renderOverlay();
+    var nf = viewerEl.querySelector('.nofit'); if (nf) nf.remove();
+    if (!b.total) viewerEl.insertAdjacentHTML('beforeend', '<div class="nofit">Agrega al menos una línea válida para ver el plano de carga.</div>');
+    if (resetCam || !three.dims || three.dims.L !== b.L || three.dims.H !== b.H || three.dims.W !== b.W) setView(currentView, true);
+    three.dims = { L: b.L, W: b.W, H: b.H };
+    applyTheme();
+  }
+  function renderOverlay() {
+    var d = last, C = d.C, c = d.res.containers[state.view] || { weight: 0, vol: 0, freeLen: C.L, cg: null };
+    var capVol = C.L * C.W * C.H, imp = state.units === 'imperial';
+    var dimTxt = imp ? fmt(C.L / IN, 0) + ' × ' + fmt(C.W / IN, 0) + ' × ' + fmt(C.H / IN, 0) + ' in' : fmt(C.L, 1) + ' × ' + fmt(C.W, 1) + ' × ' + fmt(C.H, 1) + ' cm';
+    var over = d.cbm * 1e6 > capVol * state.avail;
+    var cgTxt = c.cg ? fmt(c.cg.x / 100, 2) + ' m de la cabecera (' + signed(c.devL) + '% del centro) · ' + (c.cgOk ? 'balanceado' : 'revisar balance') : '—';
+    $('overlay').innerHTML = '<div class="info"><div class="t">' + esc(C.name) + ' · ' + dimTxt + '</div>' +
+      '<table><thead><tr><th></th><th>Peso</th><th>Volumen</th><th>Libres</th></tr></thead><tbody>' +
+      '<tr><td>Capacidad</td><td>' + wtTxt(C.payload, 0) + '</td><td>' + fmt(capVol / 1e6, 2) + ' m³</td><td>' + lenTxt(C.L) + '</td></tr>' +
+      '<tr><td>Carga total</td><td>' + wtTxt(d.totKg, 0) + '</td><td class="' + (over ? 'over' : '') + '">' + fmt(d.cbm, 2) + ' m³</td><td></td></tr>' +
+      '<tr><td>En este equipo</td><td>' + wtTxt(c.weight, 0) + '</td><td>' + fmt(c.vol / 1e6, 2) + ' m³</td><td>' + lenTxt(c.freeLen) + '</td></tr>' +
+      '</tbody></table><div class="hint" style="margin-top:6px">Centro de gravedad: ' + cgTxt + ' · Puertas a la derecha</div></div>';
+  }
+  function setSequence(n) {
+    if (!three || !three.built) return;
+    three.built.meshes.forEach(function (m) {
+      var r = m.userData.ranks, lo = 0, hi = r.length;
+      while (lo < hi) { var mid = (lo + hi) >> 1; if (r[mid] < n) lo = mid + 1; else hi = mid; }
+      if (m.userData.kind === 'edge') m.geometry.setDrawRange(0, lo * 24); else m.count = lo;
+    });
+    $('seqOut').textContent = fmt(n, 0) + ' de ' + fmt(three.built.total, 0) + ' bultos';
+  }
+  $('seqRange').addEventListener('input', function (e) { stopPlay(); setSequence(parseInt(e.target.value, 10)); });
+  var playing = null;
+  function stopPlay() { if (playing) { cancelAnimationFrame(playing); playing = null; $('play').textContent = 'Simular carga'; } }
+  $('play').addEventListener('click', function () {
+    if (!three || !three.built) return;
+    if (playing) { stopPlay(); return; }
+    var total = three.built.total; if (!total) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { $('seqRange').value = total; setSequence(total); return; }
+    var dur = Math.min(9000, 2500 + total * 6), t0 = performance.now();
+    $('play').textContent = 'Detener';
+    (function step(now) {
+      var p = Math.min(1, (now - t0) / dur), n = Math.round(total * p);
+      $('seqRange').value = n; setSequence(n);
+      if (p < 1) playing = requestAnimationFrame(step); else stopPlay();
+    })(t0);
+  });
+
+  function isoPose(cam, L, W, H, k) {
+    var target = new THREE.Vector3(0, H / 2, 0), rad = 0.5 * Math.sqrt(L * L + W * W + H * H);
+    var vf = cam.fov * Math.PI / 180, hf = 2 * Math.atan(Math.tan(vf / 2) * (cam.aspect || 1.6));
+    var dist = rad / Math.sin(Math.min(vf, hf) / 2) * (k || 0.92);
+    return { pos: new THREE.Vector3(0.55, 0.5, 0.67).normalize().multiplyScalar(dist).add(target), target: target };
+  }
+  var currentView = 'iso';
+  function setView(v, instant) {
+    if (!three) return;
+    currentView = v;
+    document.querySelectorAll('[data-view]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.view === v)); });
+    var C = last.C, L = C.L / 100, W = C.W / 100, H = C.H / 100, cam = three.camera, ctl = three.controls;
+    var fit = function (size) { return size / (2 * Math.tan(cam.fov * Math.PI / 360)) * 1.15; }, aspect = cam.aspect || 1.6;
+    var target = new THREE.Vector3(0, H / 2, 0), pos;
+    if (v === 'side') pos = new THREE.Vector3(0, H / 2, Math.max(fit(H), fit(L / aspect)) + W / 2);
+    else if (v === 'door') pos = new THREE.Vector3(Math.max(fit(H), fit(W / aspect)) + L / 2, H / 2, 0);
+    else if (v === 'top') pos = new THREE.Vector3(0.0001, Math.max(fit(W), fit(L / aspect)) + H, 0.001);
+    else { var p = isoPose(cam, L, W, H); pos = p.pos; }
+    ctl.maxPolarAngle = v === 'top' ? Math.PI : Math.PI * 0.495;
+    if (instant || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { cam.position.copy(pos); ctl.target.copy(target); ctl.update(); return; }
+    var p0 = cam.position.clone(), t0 = ctl.target.clone(), start = performance.now();
+    (function step(now) {
+      var k = Math.min(1, (now - start) / 550), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      cam.position.lerpVectors(p0, pos, e); ctl.target.lerpVectors(t0, target, e);
+      if (k < 1) requestAnimationFrame(step);
+    })(start);
+  }
+  document.querySelectorAll('[data-view]').forEach(function (b) { b.addEventListener('click', function () { setView(b.dataset.view); }); });
+  $('prevC').addEventListener('click', function () { if (state.view > 0) { state.view--; stopPlay(); renderKpis(); renderLegend(); renderCgStatus(); build3D(); } });
+  $('nextC').addEventListener('click', function () { if (last && state.view < last.res.containers.length - 1) { state.view++; stopPlay(); renderKpis(); renderLegend(); renderCgStatus(); build3D(); } });
+  $('balanceMode').addEventListener('change', function (e) { state.centered = e.target.value === 'center'; recompute(); });
+  $('cgTol').addEventListener('input', function (e) { var t = num(e.target.value); if (t > 0) { state.tol = t; recompute(); } });
+
+  // ---------- Reporte por equipo ----------
+  var reportTimer = null;
+  function scheduleReport() { clearTimeout(reportTimer); reportTimer = setTimeout(renderReport, 300); }
+  function snapshot(ci) {
+    if (!snap) return {};
+    var b = buildGroup(ci, { edge: '#1D3557', grid: '#C9D2DA', glass: 0.74 }), cam = snap.camera, out = {};
+    snap.scene.add(b.group);
+    function shot(view, w, h) {
+      snap.renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix();
+      var vf = cam.fov * Math.PI / 180, hf = 2 * Math.atan(Math.tan(vf / 2) * cam.aspect), dist;
+      cam.up.set(0, 1, 0);
+      if (view === 'iso') { var p = isoPose(cam, b.L, b.W, b.H, 0.66); cam.position.copy(p.pos); cam.lookAt(p.target); }
+      else if (view === 'top') {
+        dist = Math.max(b.L * 1.06 / (2 * Math.tan(hf / 2)), b.W * 1.15 / (2 * Math.tan(vf / 2))) + b.H;
+        cam.up.set(0, 0, -1); cam.position.set(0, dist, 0); cam.lookAt(0, 0, 0);
+      } else {
+        dist = Math.max(b.L * 1.06 / (2 * Math.tan(hf / 2)), b.H * 1.15 / (2 * Math.tan(vf / 2))) + b.W / 2;
+        cam.position.set(0, b.H / 2, dist); cam.lookAt(0, b.H / 2, 0);
+      }
+      snap.renderer.render(snap.scene, cam);
+      try { return snap.renderer.domElement.toDataURL('image/jpeg', 0.86); } catch (e) { return ''; }
+    }
+    out.iso = shot('iso', 960, 480);
+    out.top = shot('top', 1200, 330);
+    out.side = shot('side', 1200, 330);
+    cam.up.set(0, 1, 0);
+    snap.scene.remove(b.group); disposeObj(b.group);
+    return out;
+  }
+  function renderReport() {
+    var d = last, C = d.C, imp = state.units === 'imperial', u = imp ? 'in' : 'cm', capVol = C.L * C.W * C.H;
+    if (!d.totBoxes) { $('report').innerHTML = '<p class="hint">El reporte aparece cuando agregas carga.</p>'; return; }
+    var html = d.res.containers.map(function (c, ci) {
+      if (!c.boxes.length) return '';
+      var counts = {};
+      c.boxes.forEach(function (b) { counts[b.line] = (counts[b.line] || 0) + 1; });
+      var rows = Object.keys(counts).map(Number).sort(function (a, b) { return a - b; }).map(function (i) {
+        var ln = state.lines[i], n = d.ns[i];
+        return '<tr><td>' + chip(i) + '</td>' +
+          '<td>' + esc(lineName(i)) + '<br><span class="hint">' + TYPES[ln.type] + '</span></td>' +
+          '<td class="n">' + fmt(counts[i], 0) + '</td>' +
+          '<td class="n">' + ln.l + ' × ' + ln.w + ' × ' + ln.h + ' ' + u + '</td>' +
+          '<td class="n">' + wtTxt(n.wt * counts[i], 1) + '</td>' +
+          '<td><span class="tag">' + (ln.stack ? 'Apilable' : 'No apilar') + '</span><span class="tag">' + (ln.tilt ? 'Se puede voltear' : 'Este lado arriba') + '</span></td></tr>';
+      }).join('');
+      var extra = ci >= state.avail;
+      var img = ci < 12 ? snapshot(ci) : {};
+      return '<article class="rep' + (extra ? ' extra' : '') + '">' +
+        '<div class="rep-head"><h3>Reporte ' + String(ci + 1).padStart(3, '0') + ' · ' + esc(C.name) + (extra ? ' · <span style="color:var(--bad)">equipo adicional, excede los disponibles</span>' : '') + '</h3>' +
+        '<span class="meta">' + fmt(C.L, 1) + ' × ' + fmt(C.W, 1) + ' × ' + fmt(C.H, 1) + ' cm int.</span></div>' +
+        '<div class="rep-body"><div>' + (img.iso ? '<div class="rep-imgs"><img alt="Plano de carga 3D del equipo ' + (ci + 1) + '" src="' + img.iso + '">' +
+          '<div class="rep-sub"><figure><img alt="Vista en planta del equipo ' + (ci + 1) + '" src="' + img.top + '"><figcaption>Planta · cabecera a la izquierda, puertas a la derecha</figcaption></figure>' +
+          '<figure><img alt="Vista lateral del equipo ' + (ci + 1) + '" src="' + img.side + '"><figcaption>Lateral · cabecera a la izquierda</figcaption></figure></div></div>'
+          : '<p class="hint" style="padding:18px">Vista 3D disponible en el visor.</p>') + '</div>' +
+        '<div><div class="rep-stats">' +
+        '<span>Peso <b>' + wtTxt(c.weight, 1) + '</b> (' + fmt(c.weight / C.payload * 100, 0) + '%)</span>' +
+        '<span>Volumen <b>' + fmt(c.vol / 1e6, 2) + ' m³</b> (' + fmt(c.vol / capVol * 100, 0) + '%)</span>' +
+        '<span>Metros libres <b>' + lenTxt(c.freeLen) + '</b></span>' +
+        '<span>Bultos <b>' + fmt(c.boxes.length, 0) + '</b></span>' +
+        (c.cg ? '<span>Centro de gravedad <b>' + fmt(c.cg.x / 100, 2) + ' m</b> de la cabecera (' + signed(c.devL) + '% largo, ' + signed(c.devW) + '% ancho, altura ' + fmt(c.cg.y / 100, 2) + ' m) · ' + (c.cgOk ? 'balanceado' : 'revisar balance') + '</span>' +
+          '<span>Delantera / trasera <b>' + fmt((c.front + c.rear) ? c.front / (c.front + c.rear) * 100 : 0, 0) + '% / ' + fmt((c.front + c.rear) ? c.rear / (c.front + c.rear) * 100 : 0, 0) + '%</b></span>' +
+          (c.frontGap > 1 ? '<span>Libre en cabecera <b>' + lenTxt(c.frontGap) + '</b> (requiere bloqueo)</span>' : '') : '') +
+        '</div><div class="table-scroll"><table><thead><tr><th></th><th>Descripción</th><th class="num">Piezas</th><th class="num">L × A × H</th><th class="num">Peso total</th><th>Restricciones</th></tr></thead><tbody>' +
+        rows + '</tbody></table></div></div></div></article>';
+    }).join('');
+    var pending = d.ns.map(function (n, i) { return validLine(n) ? n.qty - d.loadedAll[i] : 0; });
+    if (pending.some(function (p) { return p > 0; })) {
+      html += '<article class="rep extra"><div class="rep-head"><h3>Sin cargar</h3></div><div style="padding:12px 18px">' +
+        pending.map(function (p, i) { return p > 0 ? '<p style="margin:4px 0">' + letterOf(i) + '. ' + esc(lineName(i)) + ': ' + fmt(p, 0) + ' bultos no caben en este tipo de equipo.</p>' : ''; }).join('') + '</div></article>';
+    }
+    $('report').innerHTML = html;
+    renderPrintSummary();
+    renderPrintHead();
+  }
+  function renderPrintSummary() {
+    var d = last, imp = state.units === 'imperial', u = imp ? 'in' : 'cm';
+    var rows = state.lines.map(function (ln, i) {
+      var n = d.ns[i]; if (!validLine(n)) return '';
+      return '<tr><td>' + chip(i) + '</td><td>' + esc(lineName(i)) + '<br><span class="hint">' + TYPES[ln.type] + '</span></td>' +
+        '<td class="n">' + ln.l + ' × ' + ln.w + ' × ' + ln.h + ' ' + u + '</td><td class="n">' + fmt(n.qty, 0) + '</td>' +
+        '<td class="n">' + wtTxt(n.wt, 1) + '</td><td class="n">' + fmt(n.l * n.w * n.h * n.qty / 1e6, 3) + ' m³</td><td class="n">' + wtTxt(n.wt * n.qty, 1) + '</td>' +
+        '<td><span class="tag">' + (ln.stack ? 'Apilable' : 'No apilar') + '</span><span class="tag">' + (ln.tilt ? 'Se puede voltear' : 'Este lado arriba') + '</span></td>' +
+        '<td class="n">' + fmt(d.loaded[i], 0) + '/' + fmt(n.qty, 0) + '</td></tr>';
+    }).join('');
+    $('printSummary').innerHTML = '<table><thead><tr><th></th><th>Descripción</th><th class="num">L × A × H</th><th class="num">Cant.</th><th class="num">Peso c/u</th><th class="num">Volumen</th><th class="num">Peso total</th><th>Restricciones</th><th class="num">Cargado</th></tr></thead><tbody>' + rows +
+      '<tr><td></td><td><b>Total</b></td><td></td><td class="n"><b>' + fmt(d.totBoxes, 0) + '</b></td><td></td><td class="n"><b>' + fmt(d.cbm, 3) + ' m³</b></td><td class="n"><b>' + wtTxt(d.totKg, 1) + '</b></td><td></td><td class="n"><b>' + fmt(d.placedAvail, 0) + '/' + fmt(d.totBoxes, 0) + '</b></td></tr></tbody></table>';
+  }
+  function renderPrintHead() {
+    if (!last) return;
+    var C = last.C, client = $('r-client').value.trim(), ref = $('r-ref').value.trim(), notes = $('r-notes').value.trim();
+    var today = new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+    $('phInfo').innerHTML = (client ? '<div><b>' + esc(client) + '</b></div>' : '') + (ref ? '<div>Ref. ' + esc(ref) + '</div>' : '') +
+      '<div>' + state.avail + ' × ' + esc(C.name) + ' · ' + fmt(C.L / 100, 2) + ' × ' + fmt(C.W / 100, 2) + ' × ' + fmt(C.H / 100, 2) + ' m int.</div><div>' + today + '</div>';
+    $('phNotes').textContent = notes ? 'Notas: ' + notes : '';
+  }
+  // La vista previa embebida no permite imprimir; el botón se activa en la página publicada.
+  var framed = false;
+  try { framed = window.self !== window.top; } catch (e) { framed = true; }
+  if (framed) {
+    $('printPlan').hidden = true;
+    $('printHint').textContent = 'La impresión se activa en la página publicada de la calculadora.';
+  }
+  $('printPlan').addEventListener('click', function () {
+    clearTimeout(reportTimer); renderReport();
+    setTimeout(function () { window.print(); }, 50);
+  });
+
+  function themeChanged() { if (three && last) build3D(); }
+  try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', themeChanged); } catch (e) {}
+  new MutationObserver(themeChanged).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  // ---------- Arranque ----------
+  loadSample();
+  renderRows();
+  syncDims();
+  three = initThree();
+  recompute(true);
+})();
+</script>
+</body>
+</html>
