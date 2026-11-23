@@ -373,6 +373,21 @@ th, td { border-bottom-color: var(--glass-edge); }
 .split i { display: block; height: 100%; background: var(--slate); }
 .split i + i { background: var(--aqua); }
 @media print { .balance, .legend-head, .legend { display: none !important; } }
+
+/* ---- v6: identificador editable con imagen, flota mixta ---- */
+.idcell { display: flex; align-items: center; gap: 6px; }
+.idcell input[type="text"].lab { width: 54px; min-width: 0; text-align: center; font-family: var(--font-mono); text-transform: uppercase; padding: 6px 4px; }
+.imgbtn { position: relative; display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; border: 1px dashed var(--line-strong); background: var(--field-glass); cursor: pointer; overflow: hidden; color: var(--muted); font-size: 16px; }
+.imgbtn img { width: 100%; height: 100%; object-fit: contain; background: #FFFFFF; }
+.imgbtn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.imgbtn:focus-within { outline: 2px solid var(--focus); outline-offset: 1px; }
+.rmimg { font: inherit; border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 15px; padding: 2px 4px; border-radius: 5px; }
+.rmimg:hover { color: var(--bad); }
+.letter.img { background: #FFFFFF !important; padding: 1px; overflow: hidden; width: 28px; min-width: 28px; height: 22px; flex: 0 0 auto; }
+.letter.img img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.letter { width: auto; min-width: 22px; padding-inline: 4px; }
+.fleet { font-size: 15px; color: var(--ink); }
+.fleet b { font-weight: 600; }
 </style>
 </head>
 <body>
@@ -438,12 +453,16 @@ th, td { border-bottom-color: var(--glass-edge); }
         </div>
       </div>
       <label class="ctl">
-        <span>Equipo</span>
+        <span>Equipo principal</span>
         <select id="container"></select>
       </label>
       <label class="ctl">
+        <span>Combinar con (remanente)</span>
+        <select id="container2"></select>
+      </label>
+      <label class="ctl">
         <span>Equipos disponibles</span>
-        <input type="number" id="avail" min="1" step="1" value="1" style="width:90px">
+        <input type="number" id="avail" min="1" step="1" value="" placeholder="Sin límite" style="width:110px">
       </label>
       <label class="ctl">
         <span>Factor aéreo</span>
@@ -455,9 +474,9 @@ th, td { border-bottom-color: var(--glass-edge); }
       <label class="ctl">
         <span>Identificar líneas por</span>
         <select id="labelMode">
-          <option value="both" selected>Letra y color</option>
+          <option value="both" selected>Identificador y color</option>
           <option value="color">Solo color</option>
-          <option value="letter">Solo letra</option>
+          <option value="letter">Solo identificador</option>
         </select>
       </label>
     </div>
@@ -475,7 +494,7 @@ th, td { border-bottom-color: var(--glass-edge); }
       <table aria-describedby="h-carga" style="min-width:1120px">
         <thead>
           <tr>
-            <th></th>
+            <th>Identificador</th>
             <th>Tipo</th>
             <th>Descripción</th>
             <th class="num">Largo <span class="u-len">cm</span></th>
@@ -637,16 +656,16 @@ th, td { border-bottom-color: var(--glass-edge); }
   var LETTER_ONLY = '#C7D8E2';
   var IN = 2.54, LB = 0.45359237;
   var SAMPLE = [
-    { type: 'pallet', desc: 'Pallet producto terminado', l: 120, w: 100, h: 150, qty: 16, wt: 520, stack: false, tilt: false },
-    { type: 'crate', desc: 'Huacal refacciones', l: 110, w: 90, h: 95, qty: 8, wt: 240, stack: true, tilt: false },
-    { type: 'caja', desc: 'Caja master 60 × 40 × 40', l: 60, w: 40, h: 40, qty: 180, wt: 18, stack: true, tilt: true },
-    { type: 'caja', desc: 'Caja 50 × 40 × 30', l: 50, w: 40, h: 30, qty: 120, wt: 9, stack: true, tilt: true }
+    { type: 'pallet', desc: 'Pallet producto terminado', l: 120, w: 100, h: 150, qty: 40, wt: 520, stack: false, tilt: false },
+    { type: 'crate', desc: 'Huacal refacciones', l: 110, w: 90, h: 95, qty: 24, wt: 240, stack: true, tilt: false },
+    { type: 'caja', desc: 'Caja master 60 × 40 × 40', l: 60, w: 40, h: 40, qty: 480, wt: 18, stack: true, tilt: true },
+    { type: 'caja', desc: 'Caja 50 × 40 × 30', l: 50, w: 40, h: 30, qty: 320, wt: 9, stack: true, tilt: true }
   ];
 
   // ---------- Estado ----------
-  var state = { units: 'metric', equip: '53FT', overrides: {}, airFactor: 6000, avail: 1, labelMode: 'both', centered: false, tol: 5, vis: {}, lines: [], view: 0, isSample: true };
+  var state = { units: 'metric', equip: '40HC', equip2: '20GP', equip2Touched: false, overrides: {}, airFactor: 6000, avail: Infinity, labelMode: 'both', centered: false, tol: 5, vis: {}, lines: [], view: 0, isSample: true };
   var nextId = 1;
-  function mkLine(o, pos) { return { id: nextId++, type: o.type || 'caja', desc: o.desc || '', l: o.l, w: o.w, h: o.h, qty: o.qty, wt: o.wt, stack: o.stack !== false, tilt: !!o.tilt, color: o.color || COLORS[pos % COLORS.length] }; }
+  function mkLine(o, pos) { return { id: nextId++, type: o.type || 'caja', desc: o.desc || '', l: o.l, w: o.w, h: o.h, qty: o.qty, wt: o.wt, stack: o.stack !== false, tilt: !!o.tilt, color: o.color || COLORS[pos % COLORS.length], label: o.label || '', img: '', imgEl: null, imgStamp: 0 }; }
   function loadSample() {
     state.lines = SAMPLE.map(function (s, k) {
       if (state.units === 'metric') return mkLine(s, k);
@@ -667,14 +686,30 @@ th, td { border-bottom-color: var(--glass-edge); }
   function lineColor(i) { return (state.lines[i] && state.lines[i].color) || COLORS[i % COLORS.length]; }
   function colorOf(i) { return state.labelMode === 'letter' ? LETTER_ONLY : lineColor(i); }
   function showLetter() { return state.labelMode !== 'color'; }
-  function chip(i) { var col = colorOf(i); return '<span class="letter' + (isLight(col) ? ' light' : '') + '" style="background:' + col + '">' + (showLetter() ? letterOf(i) : '') + '</span>'; }
-  function isLight(hex) { var c = parseInt(hex.slice(1), 16), r = c >> 16, g = (c >> 8) & 255, b = c & 255; return (r * 299 + g * 587 + b * 114) / 1000 > 150; }
-  function lineName(i) { return state.lines[i] && state.lines[i].desc ? state.lines[i].desc : 'Línea ' + letterOf(i); }
-  function equipDef(key) { return EQUIP.filter(function (e) { return e.key === key; })[0]; }
-  function getContainer() {
-    var d = equipDef(state.equip), o = state.overrides[state.equip] || {};
-    return { key: d.key, name: d.name, variable: !!d.variable, L: o.L || d.L, W: o.W || d.W, H: o.H || d.H, payload: o.payload || d.payload, edited: !!state.overrides[state.equip] };
+  // Identificador de la línea: el que capture el usuario o la letra automática
+  function labelOf(i) { var ln = state.lines[i], t = ln && ln.label ? String(ln.label).trim() : ''; return t || letterOf(i); }
+  function imgOf(i) { var ln = state.lines[i]; return ln && ln.img ? ln.img : ''; }
+  function chip(i) {
+    var col = colorOf(i);
+    if (showLetter() && imgOf(i)) return '<span class="letter img" title="' + esc(labelOf(i)) + '"><img src="' + imgOf(i) + '" alt="' + esc(labelOf(i)) + '"></span>';
+    return '<span class="letter' + (isLight(col) ? ' light' : '') + '" style="background:' + col + '">' + (showLetter() ? esc(labelOf(i)) : '') + '</span>';
   }
+  function isLight(hex) { var c = parseInt(hex.slice(1), 16), r = c >> 16, g = (c >> 8) & 255, b = c & 255; return (r * 299 + g * 587 + b * 114) / 1000 > 150; }
+  function lineName(i) { return state.lines[i] && state.lines[i].desc ? state.lines[i].desc : 'Línea ' + labelOf(i); }
+  function equipDef(key) { return EQUIP.filter(function (e) { return e.key === key; })[0]; }
+  function getContainer(key) {
+    key = key || state.equip;
+    var d = equipDef(key), o = state.overrides[key] || {};
+    return { key: d.key, name: d.name, variable: !!d.variable, L: o.L || d.L, W: o.W || d.W, H: o.H || d.H, payload: o.payload || d.payload, edited: !!state.overrides[key] };
+  }
+  function capOf(C) { return C.L * C.W * C.H; }
+  // Texto del plan de equipos, p. ej. "3 × 40' High Cube + 1 × 20' Dry"
+  function fleetText(res) {
+    var order = [], counts = {};
+    res.containers.forEach(function (c) { if (!c.boxes.length) return; var k = c.C.key; if (!counts[k]) { counts[k] = 0; order.push(c.C); } counts[k]++; });
+    return order.map(function (C) { return counts[C.key] + ' × ' + C.name; }).join(' + ') || '—';
+  }
+  function availTxt() { return isFinite(state.avail) ? String(state.avail) : 'sin límite'; }
   function wtTxt(kg, d) { return state.units === 'metric' ? fmt(kg, d) + ' kg' : fmt(kg / LB, d) + ' lb'; }
   function lenTxt(cm) { return state.units === 'metric' ? fmt(cm / 100, 2) + ' m' : fmt(cm / IN / 12, 1) + ' ft'; }
   function norm(line) {
@@ -763,12 +798,15 @@ th, td { border-bottom-color: var(--glass-edge); }
 
   // ---------- Selector de equipo ----------
   (function buildEquipSelect() {
-    var sel = $('container'), groups = {};
-    EQUIP.forEach(function (e) {
-      if (!groups[e.group]) { groups[e.group] = document.createElement('optgroup'); groups[e.group].label = e.group; sel.appendChild(groups[e.group]); }
-      var op = document.createElement('option'); op.value = e.key; op.textContent = e.name; groups[e.group].appendChild(op);
+    ['container', 'container2'].forEach(function (id) {
+      var sel = $(id), groups = {};
+      if (id === 'container2') { var none = document.createElement('option'); none.value = ''; none.textContent = 'No combinar'; sel.appendChild(none); }
+      EQUIP.forEach(function (e) {
+        if (!groups[e.group]) { groups[e.group] = document.createElement('optgroup'); groups[e.group].label = e.group; sel.appendChild(groups[e.group]); }
+        var op = document.createElement('option'); op.value = e.key; op.textContent = e.name; groups[e.group].appendChild(op);
+      });
     });
-    sel.value = state.equip;
+    $('container').value = state.equip; $('container2').value = state.equip2;
   })();
 
   // ---------- Tabla ----------
@@ -780,10 +818,14 @@ th, td { border-bottom-color: var(--glass-edge); }
     rowsEl.innerHTML = state.lines.map(function (ln, i) {
       var col = lineColor(i);
       return '<tr data-id="' + ln.id + '">' +
-        '<td><label class="pick' + (isLight(col) ? ' light' : '') + '" style="background:' + col + '" title="Cambiar color de la línea ' + letterOf(i) + '">' + letterOf(i) +
-        '<input type="color" id="c-' + ln.id + '" data-f="color" value="' + col + '" aria-label="Color de la línea ' + letterOf(i) + '"></label></td>' +
+        '<td><div class="idcell"><label class="pick' + (isLight(col) ? ' light' : '') + '" style="background:' + col + '" title="Cambiar color de la línea ' + esc(labelOf(i)) + '">' + esc(labelOf(i)).slice(0, 3) +
+        '<input type="color" id="c-' + ln.id + '" data-f="color" value="' + col + '" aria-label="Color de la línea ' + esc(labelOf(i)) + '"></label>' +
+        '<input type="text" class="lab" id="lab-' + ln.id + '" data-f="label" maxlength="4" value="' + esc(ln.label || '') + '" placeholder="' + letterOf(i) + '" aria-label="Identificador de la línea" title="Letra o código que aparece en los bultos">' +
+        '<label class="imgbtn" title="' + (ln.img ? 'Cambiar imagen' : 'Agregar imagen en lugar del identificador') + '">' + (ln.img ? '<img src="' + ln.img + '" alt="">' : '+') +
+        '<input type="file" accept="image/*" id="img-' + ln.id + '" data-f="img" aria-label="Imagen de la línea"></label>' +
+        (ln.img ? '<button type="button" class="rmimg" data-rmimg="' + ln.id + '" aria-label="Quitar imagen">×</button>' : '') + '</div></td>' +
         '<td><select id="t-' + ln.id + '" data-f="type" aria-label="Tipo de bulto">' + Object.keys(TYPES).map(function (k) { return '<option value="' + k + '"' + (ln.type === k ? ' selected' : '') + '>' + TYPES[k] + '</option>'; }).join('') + '</select></td>' +
-        '<td><input type="text" id="d-' + ln.id + '" data-f="desc" value="' + esc(ln.desc) + '" placeholder="Línea ' + letterOf(i) + '" aria-label="Descripción"></td>' +
+        '<td><input type="text" id="d-' + ln.id + '" data-f="desc" value="' + esc(ln.desc) + '" placeholder="Línea ' + esc(labelOf(i)) + '" aria-label="Descripción"></td>' +
         '<td class="num"><input type="number" id="l-' + ln.id + '" data-f="l" min="0" step="any" value="' + ln.l + '" aria-label="Largo"></td>' +
         '<td class="num"><input type="number" id="w-' + ln.id + '" data-f="w" min="0" step="any" value="' + ln.w + '" aria-label="Ancho"></td>' +
         '<td class="num"><input type="number" id="h-' + ln.id + '" data-f="h" min="0" step="any" value="' + ln.h + '" aria-label="Alto"></td>' +
@@ -805,6 +847,12 @@ th, td { border-bottom-color: var(--glass-edge); }
   rowsEl.addEventListener('input', function (e) {
     var ln = lineFromEvent(e), f = e.target.dataset.f; if (!ln || !f) return;
     if (f === 'stack' || f === 'tilt') ln[f] = e.target.checked;
+    else if (f === 'img') return;
+    else if (f === 'label') {
+      ln.label = e.target.value.toUpperCase().slice(0, 4);
+      var pk = e.target.parentNode.querySelector('.pick'); if (pk && pk.firstChild) pk.firstChild.nodeValue = (ln.label.trim() || e.target.placeholder).slice(0, 3);
+      markEdited(); schedule(); return;
+    }
     else if (f === 'color') {
       ln.color = e.target.value;
       var lab = e.target.parentNode; lab.style.background = ln.color; lab.classList.toggle('light', isLight(ln.color));
@@ -815,13 +863,38 @@ th, td { border-bottom-color: var(--glass-edge); }
   });
   rowsEl.addEventListener('change', function (e) {
     var ln = lineFromEvent(e), f = e.target.dataset.f; if (!ln || !f) return;
+    if (f === 'label') { renderRows(); recompute(); return; }
     if (f === 'type') {
       ln.type = e.target.value;
       if (ln.type !== 'caja') { ln.tilt = false; var cb = $('v-' + ln.id); if (cb) cb.checked = false; }
+    } else if (f === 'img') {
+      var file = e.target.files && e.target.files[0]; if (!file) return;
+      loadLineImage(ln, file); return;
     } else if (f === 'stack' || f === 'tilt') ln[f] = e.target.checked;
     markEdited(); recompute();
   });
+  // Reduce la imagen a 256 px como máximo y la guarda en la línea (solo en esta sesión del navegador)
+  function loadLineImage(ln, file) {
+    if (!/^image\//.test(file.type)) { $('msg').textContent = 'El archivo debe ser una imagen (PNG, JPG o SVG).'; return; }
+    var reader = new FileReader();
+    reader.onload = function () {
+      var im = new Image();
+      im.onload = function () {
+        var k = Math.min(1, 256 / Math.max(im.width || 256, im.height || 256)), cv = document.createElement('canvas');
+        cv.width = Math.max(1, Math.round((im.width || 256) * k)); cv.height = Math.max(1, Math.round((im.height || 256) * k));
+        cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+        var url = cv.toDataURL('image/png'), done = new Image();
+        done.onload = function () { ln.img = url; ln.imgEl = done; ln.imgStamp++; markEdited(); renderRows(); recompute(); };
+        done.src = url;
+      };
+      im.onerror = function () { $('msg').textContent = 'No se pudo leer la imagen. Prueba con PNG o JPG.'; };
+      im.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
   rowsEl.addEventListener('click', function (e) {
+    var rm = e.target.closest('[data-rmimg]');
+    if (rm) { var l2 = state.lines.find(function (x) { return x.id == rm.dataset.rmimg; }); if (l2) { l2.img = ''; l2.imgEl = null; l2.imgStamp++; } renderRows(); recompute(); return; }
     var b = e.target.closest('[data-del]'); if (!b) return;
     state.lines = state.lines.filter(function (x) { return x.id != b.dataset.del; });
     markEdited(); renderRows(); recompute();
@@ -854,8 +927,13 @@ th, td { border-bottom-color: var(--glass-edge); }
   }
   $('u-metric').addEventListener('click', function () { setUnits('metric'); });
   $('u-imperial').addEventListener('click', function () { setUnits('imperial'); });
-  $('container').addEventListener('change', function (e) { state.equip = e.target.value; state.view = 0; syncDims(); recompute(true); });
-  $('avail').addEventListener('input', function (e) { state.avail = Math.max(1, Math.floor(num(e.target.value)) || 1); recompute(); });
+  $('container').addEventListener('change', function (e) {
+    state.equip = e.target.value; state.view = 0;
+    if (!state.equip2Touched) { state.equip2 = (state.equip === '40GP' || state.equip === '40HC') ? '20GP' : ''; $('container2').value = state.equip2; }
+    syncDims(); recompute(true);
+  });
+  $('container2').addEventListener('change', function (e) { state.equip2 = e.target.value; state.equip2Touched = true; state.view = 0; recompute(true); });
+  $('avail').addEventListener('input', function (e) { var v = Math.floor(num(e.target.value)); state.avail = v >= 1 ? v : Infinity; recompute(); });
   $('airFactor').addEventListener('change', function (e) { state.airFactor = num(e.target.value); recompute(); });
   $('labelMode').addEventListener('change', function (e) { state.labelMode = e.target.value; recompute(); });
   ['r-client', 'r-ref', 'r-notes'].forEach(function (id) { $(id).addEventListener('input', renderPrintHead); });
@@ -886,8 +964,8 @@ th, td { border-bottom-color: var(--glass-edge); }
     var ns = state.lines.map(norm);
     var totVolCm = 0, totKg = 0, totBoxes = 0;
     ns.forEach(function (n) { if (validLine(n)) { totVolCm += n.l * n.w * n.h * n.qty; totKg += n.wt * n.qty; totBoxes += n.qty; } });
-    var res = pack(ns.map(function (n) { return Object.assign({}, n); }), C);
-    finishContainers(res, C);
+    var res = planFleet(ns, C);
+    finishContainers(res);
     var nNeeded = res.containers.filter(function (c) { return c.boxes.length; }).length;
     if (state.view >= res.containers.length) state.view = 0;
 
@@ -913,9 +991,27 @@ th, td { border-bottom-color: var(--glass-edge); }
     scheduleReport();
   }
 
+  // Plan de equipos: llena el equipo principal y, si se eligió, pasa el último equipo a uno más chico cuando su carga cabe completa.
+  function planFleet(ns, Cb) {
+    var res = pack(ns.map(function (n) { return Object.assign({}, n); }), Cb);
+    res.containers.forEach(function (c) { c.C = Cb; });
+    if (state.equip2 && state.equip2 !== state.equip) {
+      var Cs = getContainer(state.equip2), lastC = res.containers[res.containers.length - 1];
+      if (lastC && lastC.boxes.length && capOf(Cs) < capOf(Cb)) {
+        var qty = ns.map(function () { return 0; });
+        lastC.boxes.forEach(function (b) { qty[b.line]++; });
+        var sub = pack(ns.map(function (n, i) { return Object.assign({}, n, { qty: qty[i] }); }), Cs);
+        if (sub.containers.length === 1 && !sub.unplaced.length && !sub.tooHeavy.length) {
+          sub.containers[0].C = Cs; res.containers[res.containers.length - 1] = sub.containers[0];
+        }
+      }
+    }
+    return res;
+  }
   // Centro de gravedad, reparto delantero/trasero y, si se pide, carga centrada en el largo y el ancho.
-  function finishContainers(res, C) {
+  function finishContainers(res) {
     res.containers.forEach(function (c) {
+      var C = c.C;
       var B = c.boxes;
       if (!B.length) { c.freeLen = C.L; c.frontGap = 0; c.cg = null; c.front = 0; c.rear = 0; return; }
       function stats() {
@@ -962,7 +1058,7 @@ th, td { border-bottom-color: var(--glass-edge); }
         (tip ? '<div class="tip">' + tip + '</div>' : '') };
   }
   function renderCgStatus() {
-    var c = last.res.containers[state.view], sm = cgSummary(c, last.C);
+    var c = last.res.containers[state.view], sm = cgSummary(c, c ? c.C : last.C);
     $('cgStatus').innerHTML = sm ? sm.html : '<span class="hint">Sin carga en este equipo.</span>';
   }
   function renderRowOutputs() {
@@ -983,30 +1079,30 @@ th, td { border-bottom-color: var(--glass-edge); }
   }
 
   function renderVerdict() {
-    var d = last, el = $('verdict'), C = d.C, av = state.avail;
+    var d = last, el = $('verdict'), av = state.avail, plan = esc(fleetText(d.res));
     if (!d.totBoxes) { el.className = 'verdict'; el.innerHTML = '<span class="badge" style="background:var(--muted)">Sin carga</span><span class="vt">Agrega al menos una línea con medidas y cantidad.</span>'; return; }
-    var fits = d.placedAvail >= d.totBoxes;
-    var eq = av + ' × ' + esc(C.name);
+    var blocked = d.res.unplaced.length || d.res.tooHeavy.length;
+    var fits = d.placedAvail >= d.totBoxes && !blocked;
     if (fits) {
       el.className = 'verdict';
       var lastC = d.res.containers[d.nNeeded - 1];
-      el.innerHTML = '<span class="badge">Cabe</span><span class="vt">Toda la carga entra en ' + (d.nNeeded === 1 ? '1 × ' + esc(C.name) : d.nNeeded + ' × ' + esc(C.name)) + (d.nNeeded < av ? ' (de ' + av + ' disponibles)' : '') + '</span>' +
+      el.innerHTML = '<span class="badge">Cabe</span><span class="vt">Se envía en ' + plan + (isFinite(av) && d.nNeeded < av ? ' (de ' + av + ' disponibles)' : '') + '</span>' +
         '<span class="vs">' + fmt(d.totBoxes, 0) + ' bultos, ' + fmt(d.cbm, 2) + ' m³ y ' + wtTxt(d.totKg, 0) + '. Quedan ' + lenTxt(lastC.freeLen) + ' libres en el último equipo.</span>';
     } else {
       el.className = 'verdict bad';
-      var need = d.res.unplaced.length || d.res.tooHeavy.length ? 'Hay líneas que no caben en este tipo de equipo; revisa los avisos de la tabla.' : 'Se requieren ' + d.nNeeded + ' × ' + esc(C.name) + ' para toda la carga.';
-      el.innerHTML = '<span class="badge">No cabe</span><span class="vt">En ' + eq + ' entran ' + fmt(d.placedAvail, 0) + ' de ' + fmt(d.totBoxes, 0) + ' bultos</span>' +
+      var head = blocked ? 'Hay bultos que no caben en este equipo' : 'En ' + av + ' equipo' + (av > 1 ? 's' : '') + ' entran ' + fmt(d.placedAvail, 0) + ' de ' + fmt(d.totBoxes, 0) + ' bultos';
+      var need = blocked ? 'Revisa los avisos de la tabla.' : 'Para toda la carga se requieren ' + plan + '.';
+      el.innerHTML = '<span class="badge">No cabe</span><span class="vt">' + head + '</span>' +
         '<span class="vs">Faltan ' + fmt(d.totBoxes - d.placedAvail, 0) + ' bultos (' + fmt(d.missVol / 1e6, 2) + ' m³, ' + wtTxt(d.missKg, 0) + '). ' + need + '</span>';
     }
   }
-
   function meter(pct) {
     var cls = pct > 100 ? 'over' : pct >= 90 ? 'hi' : '';
     return '<div class="meter" aria-hidden="true"><i class="' + cls + '" style="width:' + Math.min(100, pct).toFixed(1) + '%"></i></div>';
   }
   function renderKpis() {
-    var d = last, C = d.C, imp = state.units === 'imperial';
-    var capVol = C.L * C.W * C.H, vc = d.res.containers[state.view] || { vol: 0, weight: 0, freeLen: C.L };
+    var d = last, imp = state.units === 'imperial', vc = d.res.containers[state.view] || { vol: 0, weight: 0, freeLen: d.C.L, C: d.C }, C = vc.C || d.C;
+    var capVol = C.L * C.W * C.H;
     var volPct = vc.vol / capVol * 100, wPct = vc.weight / C.payload * 100;
     var w = function (kg, dd) { return imp ? fmt(kg / LB, dd) + '<small>lb</small>' : fmt(kg, dd) + '<small>kg</small>'; };
     function kpi(label, v, s) { return '<div class="kpi"><span class="lbl">' + label + '</span>' + v + '<span class="s">' + s + '</span></div>'; }
@@ -1015,8 +1111,8 @@ th, td { border-bottom-color: var(--glass-edge); }
       kpi('Peso bruto', '<span class="v">' + w(d.totKg, 1) + '</span>', imp ? fmt(d.totKg, 1) + ' kg' : fmt(d.totKg / LB, 1) + ' lb') +
       kpi('Aéreo · peso tasable', '<span class="v">' + w(d.chargeable, 1) + '</span>', 'Volumétrico ' + wtTxt(d.volKg, 1) + ' · cobra por ' + (d.volKg > d.totKg ? 'volumen' : 'peso')) +
       kpi('Marítimo LCL · W/M', '<span class="v">' + fmt(d.wm, 3) + '<small>' + (d.cbm >= d.totKg / 1000 ? 'm³' : 't') + '</small></span>', 'El mayor entre m³ y toneladas') +
-      kpi('Equipos necesarios', '<span class="v">' + fmt(d.nNeeded, 0) + '<small>× ' + esc(C.name) + '</small></span>', 'Disponibles: ' + state.avail) +
-      kpi('Equipo ' + (state.view + 1) + ' de ' + d.res.containers.length, '<span class="v">' + fmt(volPct, 1) + '<small>% vol.</small></span>',
+      kpi('Equipos necesarios', '<span class="v">' + fmt(d.nNeeded, 0) + '<small>equipos</small></span>', esc(fleetText(d.res)) + ' · disponibles: ' + availTxt()) +
+      kpi('Equipo ' + (state.view + 1) + ' de ' + d.res.containers.length + ' · ' + esc(C.name), '<span class="v">' + fmt(volPct, 1) + '<small>% vol.</small></span>',
         'Peso ' + fmt(wPct, 1) + '% · libres ' + lenTxt(vc.freeLen) + meter(volPct));
     $('pagerLbl').textContent = (state.view + 1) + ' / ' + d.res.containers.length;
     $('prevC').disabled = state.view <= 0;
@@ -1074,13 +1170,13 @@ th, td { border-bottom-color: var(--glass-edge); }
   $('copySummary').addEventListener('click', function () {
     if (!last) return;
     var d = last, imp = state.units === 'imperial', u = imp ? 'in' : 'cm';
-    var out = ['Cardinal Point · Plan de carga', 'Equipo: ' + state.avail + ' × ' + d.C.name + ' (' + fmt(d.C.L / 100, 2) + ' × ' + fmt(d.C.W / 100, 2) + ' × ' + fmt(d.C.H / 100, 2) + ' m int.)', ''];
+    var out = ['Cardinal Point · Plan de carga', 'Plan de equipos: ' + fleetText(d.res), ''];
     state.lines.forEach(function (ln, i) {
-      out.push(letterOf(i) + '. ' + lineName(i) + ' (' + TYPES[ln.type] + '): ' + ln.qty + ' × ' + ln.l + ' × ' + ln.w + ' × ' + ln.h + ' ' + u + ', ' + ln.wt + (imp ? ' lb' : ' kg') + ' c/u' +
+      out.push(labelOf(i) + '. ' + lineName(i) + ' (' + TYPES[ln.type] + '): ' + ln.qty + ' × ' + ln.l + ' × ' + ln.w + ' × ' + ln.h + ' ' + u + ', ' + ln.wt + (imp ? ' lb' : ' kg') + ' c/u' +
         (ln.stack ? '' : ', no apilable') + ' · cargado ' + d.loaded[i] + '/' + (Math.floor(num(ln.qty)) || 0));
     });
     out.push('', 'Resultado: ' + (d.placedAvail >= d.totBoxes ? 'CABE' : 'NO CABE (faltan ' + (d.totBoxes - d.placedAvail) + ' bultos)'),
-      'Equipos necesarios: ' + d.nNeeded,
+      'Equipos necesarios: ' + d.nNeeded + ' (' + fleetText(d.res) + ')',
       'Volumen total: ' + fmt(d.cbm, 3) + ' m³ · Peso bruto: ' + wtTxt(d.totKg, 1),
       'Aéreo (1:' + state.airFactor + '): tasable ' + wtTxt(d.chargeable, 1) + ' · LCL W/M: ' + fmt(d.wm, 3),
       '', 'Estimación. Sujeto a confirmación del transportista.');
@@ -1102,8 +1198,8 @@ th, td { border-bottom-color: var(--glass-edge); }
   // Textura del rótulo para el cristal. Sobre tintes claros se usa como map (letra oscura que multiplica el tinte);
   // sobre tintes oscuros como emissiveMap (letra que brilla en blanco). El resto de la cara queda neutro.
   function textureFor(i, type) {
-    var col = colorOf(i), light = isLight(col);
-    var key = i + '|' + type + '|' + col + '|' + state.labelMode;
+    var col = colorOf(i), ln = state.lines[i], pic = showLetter() && ln && ln.imgEl ? ln.imgEl : null, light = pic ? true : isLight(col);
+    var key = i + '|' + type + '|' + col + '|' + state.labelMode + '|' + labelOf(i) + '|' + (ln ? ln.imgStamp : 0);
     if (texCache[key]) return texCache[key];
     var cv = document.createElement('canvas'); cv.width = cv.height = 128;
     var g = cv.getContext('2d'), base = light ? '#FFFFFF' : '#000000', ink = light ? 'rgba(20,38,61,.78)' : 'rgba(255,255,255,.95)', faint = light ? 'rgba(20,38,61,.14)' : 'rgba(255,255,255,.22)';
@@ -1117,12 +1213,18 @@ th, td { border-bottom-color: var(--glass-edge); }
     } else {
       g.beginPath(); g.moveTo(0, 64); g.lineTo(128, 64); g.stroke();
     }
-    if (showLetter()) {
-      g.fillStyle = ink; g.font = '600 58px "DM Sans", Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.fillText(letterOf(i), 64, 68);
+    if (pic) {
+      // Imagen del usuario centrada sobre fondo blanco, para que conserve sus colores dentro del cristal
+      g.fillStyle = '#FFFFFF'; g.fillRect(10, 10, 108, 108);
+      var k = Math.min(96 / pic.width, 96 / pic.height), w = pic.width * k, h = pic.height * k;
+      g.drawImage(pic, 64 - w / 2, 64 - h / 2, w, h);
+    } else if (showLetter()) {
+      var lab = labelOf(i), size = lab.length <= 1 ? 58 : lab.length === 2 ? 46 : lab.length === 3 ? 36 : 28;
+      g.fillStyle = ink; g.font = '600 ' + size + 'px "DM Sans", Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(lab, 64, 68);
     }
     var t = new THREE.CanvasTexture(cv); t.anisotropy = 4;
-    texCache[key] = { tex: t, light: light }; return texCache[key];
+    texCache[key] = { tex: t, light: light, pic: !!pic }; return texCache[key];
   }
   function glassMaterial(i, type, opacity) {
     var tx = textureFor(i, type);
@@ -1130,7 +1232,8 @@ th, td { border-bottom-color: var(--glass-edge); }
       color: new THREE.Color(colorOf(i)).lerp(new THREE.Color('#1D3557'), isLight(colorOf(i)) ? 0.38 : 0), transparent: true, opacity: opacity, roughness: 0.08, metalness: 0,
       clearcoat: 0.7, clearcoatRoughness: 0.08, reflectivity: 0.25, envMapIntensity: 0.55, depthWrite: false
     });
-    if (tx.light) m.map = tx.tex;
+    if (tx.pic) { m.map = tx.tex; m.color = new THREE.Color(colorOf(i)).lerp(new THREE.Color('#FFFFFF'), 0.7); }
+    else if (tx.light) m.map = tx.tex;
     else { m.emissiveMap = tx.tex; m.emissive = new THREE.Color('#FFFFFF'); m.emissiveIntensity = 0.85; }
     return m;
   }
@@ -1171,7 +1274,7 @@ th, td { border-bottom-color: var(--glass-edge); }
   }
   // Construye el equipo ci con su carga. colors: { edge, grid } para el tema.
   function buildGroup(ci, colors) {
-    var C = last.C, S = 0.01, L = C.L * S, W = C.W * S, H = C.H * S;
+    var C = (last.res.containers[ci] && last.res.containers[ci].C) || last.C, S = 0.01, L = C.L * S, W = C.W * S, H = C.H * S;
     var g = new THREE.Group(); g.position.set(-L / 2, 0, -W / 2);
     var shellGeo = new THREE.BoxGeometry(L, H, W); shellGeo.translate(L / 2, H / 2, W / 2);
     var edge = new THREE.LineSegments(new THREE.EdgesGeometry(shellGeo), new THREE.LineBasicMaterial({ color: colors.edge }));
@@ -1267,15 +1370,15 @@ th, td { border-bottom-color: var(--glass-edge); }
     applyTheme();
   }
   function renderOverlay() {
-    var d = last, C = d.C, c = d.res.containers[state.view] || { weight: 0, vol: 0, freeLen: C.L, cg: null };
+    var d = last, c = d.res.containers[state.view] || { weight: 0, vol: 0, freeLen: d.C.L, cg: null, C: d.C }, C = c.C || d.C;
     var capVol = C.L * C.W * C.H, imp = state.units === 'imperial';
     var dimTxt = imp ? fmt(C.L / IN, 0) + ' × ' + fmt(C.W / IN, 0) + ' × ' + fmt(C.H / IN, 0) + ' in' : fmt(C.L, 1) + ' × ' + fmt(C.W, 1) + ' × ' + fmt(C.H, 1) + ' cm';
-    var over = d.cbm * 1e6 > capVol * state.avail;
+    var over = false;
     var cgTxt = c.cg ? fmt(c.cg.x / 100, 2) + ' m de la cabecera (' + signed(c.devL) + '% del centro) · ' + (c.cgOk ? 'balanceado' : 'revisar balance') : '—';
     $('overlay').innerHTML = '<div class="info"><div class="t">' + esc(C.name) + ' · ' + dimTxt + '</div>' +
       '<table><thead><tr><th></th><th>Peso</th><th>Volumen</th><th>Libres</th></tr></thead><tbody>' +
       '<tr><td>Capacidad</td><td>' + wtTxt(C.payload, 0) + '</td><td>' + fmt(capVol / 1e6, 2) + ' m³</td><td>' + lenTxt(C.L) + '</td></tr>' +
-      '<tr><td>Carga total</td><td>' + wtTxt(d.totKg, 0) + '</td><td class="' + (over ? 'over' : '') + '">' + fmt(d.cbm, 2) + ' m³</td><td></td></tr>' +
+      '<tr><td>Carga total</td><td>' + wtTxt(d.totKg, 0) + '</td><td class="' + (over ? 'over' : '') + '">' + fmt(d.cbm, 2) + ' m³</td><td>' + d.nNeeded + ' eq.</td></tr>' +
       '<tr><td>En este equipo</td><td>' + wtTxt(c.weight, 0) + '</td><td>' + fmt(c.vol / 1e6, 2) + ' m³</td><td>' + lenTxt(c.freeLen) + '</td></tr>' +
       '</tbody></table><div class="hint" style="margin-top:6px">Centro de gravedad: ' + cgTxt + ' · Puertas a la derecha</div></div>';
   }
@@ -1316,7 +1419,7 @@ th, td { border-bottom-color: var(--glass-edge); }
     if (!three) return;
     currentView = v;
     document.querySelectorAll('[data-view]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.view === v)); });
-    var C = last.C, L = C.L / 100, W = C.W / 100, H = C.H / 100, cam = three.camera, ctl = three.controls;
+    var cv = last.res.containers[state.view], C = (cv && cv.C) || last.C, L = C.L / 100, W = C.W / 100, H = C.H / 100, cam = three.camera, ctl = three.controls;
     var fit = function (size) { return size / (2 * Math.tan(cam.fov * Math.PI / 360)) * 1.15; }, aspect = cam.aspect || 1.6;
     var target = new THREE.Vector3(0, H / 2, 0), pos;
     if (v === 'side') pos = new THREE.Vector3(0, H / 2, Math.max(fit(H), fit(L / aspect)) + W / 2);
@@ -1368,10 +1471,11 @@ th, td { border-bottom-color: var(--glass-edge); }
     return out;
   }
   function renderReport() {
-    var d = last, C = d.C, imp = state.units === 'imperial', u = imp ? 'in' : 'cm', capVol = C.L * C.W * C.H;
+    var d = last, imp = state.units === 'imperial', u = imp ? 'in' : 'cm';
     if (!d.totBoxes) { $('report').innerHTML = '<p class="hint">El reporte aparece cuando agregas carga.</p>'; return; }
     var html = d.res.containers.map(function (c, ci) {
       if (!c.boxes.length) return '';
+      var C = c.C, capVol = C.L * C.W * C.H;
       var counts = {};
       c.boxes.forEach(function (b) { counts[b.line] = (counts[b.line] || 0) + 1; });
       var rows = Object.keys(counts).map(Number).sort(function (a, b) { return a - b; }).map(function (i) {
@@ -1406,7 +1510,7 @@ th, td { border-bottom-color: var(--glass-edge); }
     var pending = d.ns.map(function (n, i) { return validLine(n) ? n.qty - d.loadedAll[i] : 0; });
     if (pending.some(function (p) { return p > 0; })) {
       html += '<article class="rep extra"><div class="rep-head"><h3>Sin cargar</h3></div><div style="padding:12px 18px">' +
-        pending.map(function (p, i) { return p > 0 ? '<p style="margin:4px 0">' + letterOf(i) + '. ' + esc(lineName(i)) + ': ' + fmt(p, 0) + ' bultos no caben en este tipo de equipo.</p>' : ''; }).join('') + '</div></article>';
+        pending.map(function (p, i) { return p > 0 ? '<p style="margin:4px 0">' + esc(labelOf(i)) + '. ' + esc(lineName(i)) + ': ' + fmt(p, 0) + ' bultos no caben en este tipo de equipo.</p>' : ''; }).join('') + '</div></article>';
     }
     $('report').innerHTML = html;
     renderPrintSummary();
@@ -1427,10 +1531,10 @@ th, td { border-bottom-color: var(--glass-edge); }
   }
   function renderPrintHead() {
     if (!last) return;
-    var C = last.C, client = $('r-client').value.trim(), ref = $('r-ref').value.trim(), notes = $('r-notes').value.trim();
+    var client = $('r-client').value.trim(), ref = $('r-ref').value.trim(), notes = $('r-notes').value.trim();
     var today = new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
     $('phInfo').innerHTML = (client ? '<div><b>' + esc(client) + '</b></div>' : '') + (ref ? '<div>Ref. ' + esc(ref) + '</div>' : '') +
-      '<div>' + state.avail + ' × ' + esc(C.name) + ' · ' + fmt(C.L / 100, 2) + ' × ' + fmt(C.W / 100, 2) + ' × ' + fmt(C.H / 100, 2) + ' m int.</div><div>' + today + '</div>';
+      '<div class="fleet">Plan de equipos: <b>' + esc(fleetText(last.res)) + '</b></div><div>' + today + '</div>';
     $('phNotes').textContent = notes ? 'Notas: ' + notes : '';
   }
   // La vista previa embebida no permite imprimir; el botón se activa en la página publicada.
